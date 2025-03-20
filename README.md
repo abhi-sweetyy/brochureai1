@@ -72,5 +72,4 @@ postgresql://postgres.[PROJECT_REF]:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supab
 
 
 ## License
-I am transferring my whole rights to bogorman@gmail.com
-
+I am transferring my whole rights to Ines after full payment
