@@ -1,0 +1,36 @@
+Here are the present placeholders are:
+{{projectname}}
+{{category}}
+{{yearofconstruction}}
+{{condition}}
+{{qualityofequipment}}
+{{price}}
+{{space}}
+{{balcony}}
+{{powerbackup}}
+{{security}}
+{{gym}}
+{{playarea}}
+{{maintainence}}
+{{summary}}
+{{layoutdescription}}
+{{amenity1}} - {{ad1}}
+{{amenity2}} - {{ad2}}
+{{amenity3}} - {{ad3}}
+{{amenity4}} - {{ad4}
+{{amenity5}} - {{ad5}}
+{{amenity6}} - {{ad6}}
+{{amenity7}} - {{ad7}}
+{{amenity8}} - {{ad8}}
+{{amenity9}} - {{ad9}}
+{{amenity10}} - {{ad10}}
+{{phone}}
+{{email}}
+{{website}
+
+image placeholders:
+{{logo}}
+{{image1}}
+{{image2}}
+{{image3}}
+{{image4}}
