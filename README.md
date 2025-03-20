@@ -1,5 +1,4 @@
-
-# QuickContract AI
+# BrochureAI
 
 ## Environment Setup
 
@@ -8,7 +7,7 @@ Create a `.env` file in your project root with the following variables:
 
 ```env
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL="your-project-url"              # From Project Settings → API
+NEXT_PUBLIC_SUPABASE_URL=""              # From Project Settings → API
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"           # From Project Settings → API
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"       # From Project Settings → API
 
@@ -27,10 +26,14 @@ product.updated)
 NEXT_PUBLIC_STRIPE_PRO_PRICE_ID="price_..."            # Your Pro Plan Price ID
 
 # OpenRouter Configuration
-OPENROUTER_API_KEY="sk-or-v1-..."                      # From OpenRouter Dashboard
+NEXT_PUBLIC_OPENROUTER_API_KEY="sk-or-v1-..."          # From OpenRouter Dashboard
 
 # Site Configuration
-NEXT_PUBLIC_SITE_URL="http://localhost:3000"           # Your site URL
+NEXT_PUBLIC_SITE_URL="https://brochureai.vercel.app/"  # Your site URL
+
+# Google Configuration
+NEXT_PUBLIC_GOOGLE_API_KEY="your-google-api-key"       # Your Google API Key
+GOOGLE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}  # Your Google Service Account JSON
 ```
 
 ### Database Management
