@@ -38,6 +38,7 @@
 		"framer-motion": "^12.5.0",
 		"fs": "^0.0.1-security",
 		"googleapis": "^146.0.0",
+		"konva": "^9.3.20",
 		"libreoffice-convert": "^1.6.1",
 		"lucide-react": "^0.483.0",
 		"mammoth": "^1.9.0",
@@ -53,12 +54,14 @@
 		"react-doc-viewer": "^0.1.14",
 		"react-dom": "^18.2.0",
 		"react-hot-toast": "^2.5.2",
+		"react-konva": "^19.0.3",
 		"react-pdf": "^7.7.0",
 		"stripe": "^13.7.0",
 		"tailwind-merge": "^1.14.0",
 		"tailwindcss": "3.3.3",
 		"tailwindcss-animate": "^1.0.7",
-		"typescript": "5.2.2"
+		"typescript": "5.2.2",
+		"use-image": "^1.1.1"
 	},
 	"devDependencies": {
 		"@types/aos": "^3.0.7",
