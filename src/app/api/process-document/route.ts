@@ -33,6 +33,22 @@ try {
   // We'll handle this in the route handler
 }
 
+// Make sure all these placeholders are properly handled in your API endpoint:
+const allPlaceholders = [
+  'phone_number',
+  'email_address',
+  'website_name',
+  'title',
+  'address',
+  'shortdescription',
+  'price',
+  'date_available', 
+  'name_brokerfirm',
+  'descriptionlarge',
+  'descriptionextralarge',
+  'address_brokerfirm'
+];
+
 export async function POST(request: Request) {
   try {
     console.log("Process presentation API called");
@@ -97,11 +113,11 @@ export async function POST(request: Request) {
     
     console.log("Making presentation publicly accessible:", newPresentationId);
     
-    // Make the presentation publicly accessible with anyone who has the link
+    // Make the presentation publicly accessible with editing permissions
     await drive.permissions.create({
       fileId: newPresentationId,
       requestBody: {
-        role: 'reader',
+        role: 'writer',
         type: 'anyone'
       }
     });
@@ -114,30 +130,54 @@ export async function POST(request: Request) {
     
     console.log("Presentation content retrieved");
     
-    // Create batch update requests for text replacement
-    const requests: any[] = [];
+    // Replace text placeholders in the new presentation
+    // Create an array of replacement requests
+    const requests = [];
     
-    // Process each text placeholder
-    Object.entries(placeholders).forEach(([key, value]) => {
-      // Fix: Remove the extra curly braces if they exist
-      const cleanKey = key.replace(/^\{\{|\}\}$/g, '');
-      // Add the correct double curly braces
-      const placeholder = `{{${cleanKey}}}`;
-      const replacementText = String(value);
+    // Ensure all expected placeholders have values (use empty string if not provided)
+    const processedPlaceholders: Record<string, string> = {};
+    
+    // Populate all placeholders with values from the request, or empty strings
+    allPlaceholders.forEach(placeholder => {
+      processedPlaceholders[placeholder] = placeholders[placeholder] || '';
+    });
+    
+    // Process the special shortdescription placeholder if needed
+    if (placeholders.Realestate_type && placeholders.rent_or_sale && !processedPlaceholders.shortdescription) {
+      processedPlaceholders.shortdescription = 
+        `${placeholders.Realestate_type} for ${placeholders.rent_or_sale} in ${placeholders.address || 'this location'}`;
+    }
+    
+    // Map placeholders to your template placeholders
+    const placeholderMap: Record<string, string> = {
+      '{title}': processedPlaceholders.title || '',
+      '{phone_number}': processedPlaceholders.phone_number || '',
+      '{email_address}': processedPlaceholders.email_address || '',
+      '{website_name}': processedPlaceholders.website_name || '',
+      '{address}': processedPlaceholders.address || '',
+      '{shortdescription}': processedPlaceholders.shortdescription || '',
+      '{price}': processedPlaceholders.price || '',
+      '{date_available}': processedPlaceholders.date_available || '',
+      '{name_brokerfirm}': processedPlaceholders.name_brokerfirm || '',
+      '{descriptionlarge}': processedPlaceholders.descriptionlarge || '',
+      '{descriptionextralarge}': processedPlaceholders.descriptionextralarge || '',
+      '{address_brokerfirm}': processedPlaceholders.address_brokerfirm || ''
+    };
+    
+    // For each placeholder, create a replace text request
+    for (const [placeholder, value] of Object.entries(placeholderMap)) {
+      console.log(`Creating replacement request for ${placeholder}`);
       
-      console.log(`Creating replacement for: ${placeholder} -> ${replacementText}`);
-      
-      // Add a request to replace all occurrences of the placeholder
       requests.push({
         replaceAllText: {
           containsText: {
             text: placeholder,
             matchCase: true
           },
-          replaceText: replacementText
+          replaceText: value
         }
       });
-    });
+    }
     
     // Process image replacements if provided
     if (images && typeof images === 'object' && Object.keys(images).length > 0) {
@@ -191,8 +231,31 @@ export async function POST(request: Request) {
     
     console.log(`Created ${requests.length} update requests`);
     
+    // Inspect the presentation content (Update logging to look for the correct format)
+    console.log("Inspecting presentation for text elements containing '{descriptionlarge}'");
+    let foundPlaceholders = [];
+    presentation.data.slides?.forEach((slide, slideIndex) => {
+      slide.pageElements?.forEach(element => {
+        if (element.shape && element.shape.text) {
+          const textContent = element.shape.text.textElements
+            ?.map(textElement => textElement.textRun?.content || '')
+            .join('');
+          // Look for the exact format with curly braces
+          if (textContent && textContent.includes('{descriptionlarge}')) {
+            console.log(`Found '{descriptionlarge}' on slide ${slideIndex + 1}: "${textContent.substring(0, 100)}..."`);
+            foundPlaceholders.push({
+              slideIndex,
+              text: textContent.substring(0, 100)
+            });
+          }
+        }
+      });
+    });
+    console.log(`Found ${foundPlaceholders.length} instances of '{descriptionlarge}'`);
+    console.log("Placeholder text found:", foundPlaceholders);
+    
     if (requests.length > 0) {
-      console.log("Sending batch update request");
+      console.log(`Sending batch update with ${requests.length} replacements`);
       
       try {
         const updateResponse = await slides.presentations.batchUpdate({

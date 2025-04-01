@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import ImageUploader from '@/components/ImageUploader';
+import { availablePages, PageOption } from './PagesSelectionStep';
 
 interface ImagePlaceholders {
   '{{logo}}': string;
@@ -16,13 +17,15 @@ interface ImagesStepProps {
   logoUrl: string;
   setUploadedImages: React.Dispatch<React.SetStateAction<ImagePlaceholders>>;
   setLogoUrl: (url: string) => void;
+  selectedPages: Record<string, boolean>;
 }
 
 const ImagesStep: React.FC<ImagesStepProps> = ({ 
   uploadedImages, 
   logoUrl, 
   setUploadedImages, 
-  setLogoUrl 
+  setLogoUrl,
+  selectedPages
 }) => {
   // Create completely separate state for each image
   const [logo, setLogo] = useState<string>(logoUrl || '');
@@ -40,9 +43,25 @@ const ImagesStep: React.FC<ImagesStepProps> = ({
     setImage4(uploadedImages['{{image4}}'] || '');
   }, [logoUrl, uploadedImages]);
 
+  // Get required image placeholders based on selected pages
+  const getRequiredImagePlaceholders = () => {
+    const requiredPlaceholders = new Set<string>();
+    
+    // Always include logo
+    requiredPlaceholders.add('{{logo}}');
+    
+    // Add placeholders from selected pages
+    availablePages.forEach(page => {
+      if (selectedPages[page.id] && page.placeholderKeys) {
+        page.placeholderKeys.forEach(key => requiredPlaceholders.add(key));
+      }
+    });
+    
+    return requiredPlaceholders;
+  };
+
   // Update parent component with all images as an object
   const updateParent = () => {
-    // Create a new ImagePlaceholders object
     const newImages: ImagePlaceholders = {
       '{{logo}}': logo,
       '{{image1}}': image1,
@@ -50,52 +69,102 @@ const ImagesStep: React.FC<ImagesStepProps> = ({
       '{{image3}}': image3,
       '{{image4}}': image4
     };
-    
-    // Pass the object to the parent
     setUploadedImages(newImages);
   };
 
-  // Handle image1 update with special attention
-  const handleImage1Update = (urls: string[]) => {
-    console.log("Project Photo 1 update received:", urls);
-    
+  // Handle image updates
+  const handleImageUpdate = (placeholder: keyof ImagePlaceholders, urls: string[]) => {
     const url = urls.length > 0 ? urls[0] : '';
     
     // Update local state
-    setImage1(url);
+    switch (placeholder) {
+      case '{{logo}}':
+        setLogo(url);
+        setLogoUrl(url);
+        break;
+      case '{{image1}}':
+        setImage1(url);
+        break;
+      case '{{image2}}':
+        setImage2(url);
+        break;
+      case '{{image3}}':
+        setImage3(url);
+        break;
+      case '{{image4}}':
+        setImage4(url);
+        break;
+    }
     
-    // Create a new object for the parent update to ensure it's treated as a new reference
+    // Create a new object for the parent update
     const newImages: ImagePlaceholders = {
-      '{{logo}}': logo,
-      '{{image1}}': url, // Use the new URL directly
-      '{{image2}}': image2,
-      '{{image3}}': image3,
-      '{{image4}}': image4
+      '{{logo}}': placeholder === '{{logo}}' ? url : logo,
+      '{{image1}}': placeholder === '{{image1}}' ? url : image1,
+      '{{image2}}': placeholder === '{{image2}}' ? url : image2,
+      '{{image3}}': placeholder === '{{image3}}' ? url : image3,
+      '{{image4}}': placeholder === '{{image4}}' ? url : image4
     };
-    
-    console.log("Updating parent with new images:", newImages);
     
     // Update parent state
     setUploadedImages(newImages);
   };
 
-  // Handle logo update separately
-  const handleLogoUpdate = (urls: string[]) => {
-    const url = urls.length > 0 ? urls[0] : '';
-    setLogo(url);
-    setLogoUrl(url); // Update parent's logoUrl
-    
-    // Create a new object for the parent update
-    const newImages: ImagePlaceholders = {
-      '{{logo}}': url, // Use the new URL directly
-      '{{image1}}': image1,
-      '{{image2}}': image2,
-      '{{image3}}': image3,
-      '{{image4}}': image4
-    };
-    
-    // Update parent state
-    setUploadedImages(newImages);
+  // Get image sections to display
+  const getImageSections = () => {
+    const requiredPlaceholders = getRequiredImagePlaceholders();
+    const sections: JSX.Element[] = [];
+
+    // Image section configurations
+    const imageConfigs = [
+      {
+        placeholder: '{{logo}}' as keyof ImagePlaceholders,
+        title: 'Logo',
+        description: 'Company or project logo'
+      },
+      {
+        placeholder: '{{image1}}' as keyof ImagePlaceholders,
+        title: 'Project Photo 1',
+        description: 'Main project photo'
+      },
+      {
+        placeholder: '{{image2}}' as keyof ImagePlaceholders,
+        title: 'Project Photo 2',
+        description: 'Secondary project photo'
+      },
+      {
+        placeholder: '{{image3}}' as keyof ImagePlaceholders,
+        title: 'Project Layout',
+        description: 'Floor plan or layout image'
+      },
+      {
+        placeholder: '{{image4}}' as keyof ImagePlaceholders,
+        title: 'Agent Photo',
+        description: 'Real estate agent photo'
+      }
+    ];
+
+    // Add sections for required placeholders
+    imageConfigs.forEach(config => {
+      if (requiredPlaceholders.has(config.placeholder)) {
+        sections.push(
+          <div key={config.placeholder}>
+            <h4 className="text-md font-medium text-white mb-2">{config.title}</h4>
+            <p className="text-sm text-gray-400 mb-2">
+              Placeholder: {config.placeholder}
+              <br />
+              <span className="text-xs">{config.description}</span>
+            </p>
+            <ImageUploader
+              onImagesUploaded={(urls) => handleImageUpdate(config.placeholder, urls)}
+              existingImages={uploadedImages[config.placeholder] ? [uploadedImages[config.placeholder]] : []}
+              limit={1}
+            />
+          </div>
+        );
+      }
+    });
+
+    return sections;
   };
 
   return (
@@ -103,109 +172,11 @@ const ImagesStep: React.FC<ImagesStepProps> = ({
       <div>
         <h3 className="text-lg font-medium text-white mb-4">Upload Property Images</h3>
         <p className="text-[#8491A5] mb-6">
-          Add high-quality images of your property to attract potential buyers or renters.
+          Add high-quality images for your selected pages. Only the image upload fields for your selected pages will be shown.
         </p>
         
         <div className="space-y-8">
-          {/* Logo Upload */}
-          <div>
-            <h4 className="text-md font-medium text-white mb-2">Logo</h4>
-            <p className="text-sm text-gray-400 mb-2">Placeholder: &#123;&#123;logo&#125;&#125;</p>
-            <ImageUploader
-              onImagesUploaded={handleLogoUpdate}
-              existingImages={logo ? [logo] : []}
-              limit={1}
-            />
-          </div>
-
-          {/* Project Photo 1 - Using dedicated handler */}
-          <div>
-            <h4 className="text-md font-medium text-white mb-2">Project Photo 1</h4>
-            <p className="text-sm text-gray-400 mb-2">Placeholder: &#123;&#123;image1&#125;&#125;</p>
-            <ImageUploader
-              onImagesUploaded={handleImage1Update}
-              existingImages={image1 ? [image1] : []}
-              limit={1}
-            />
-          </div>
-          
-          {/* Project Photo 2 */}
-          <div>
-            <h4 className="text-md font-medium text-white mb-2">Project Photo 2</h4>
-            <p className="text-sm text-gray-400 mb-2">Placeholder: &#123;&#123;image2&#125;&#125;</p>
-            <ImageUploader
-              onImagesUploaded={(urls) => {
-                const url = urls.length > 0 ? urls[0] : '';
-                setImage2(url);
-                
-                // Create a new object for the parent update
-                const newImages: ImagePlaceholders = {
-                  '{{logo}}': logo,
-                  '{{image1}}': image1,
-                  '{{image2}}': url, // Use the new URL directly
-                  '{{image3}}': image3,
-                  '{{image4}}': image4
-                };
-                
-                // Update parent state
-                setUploadedImages(newImages);
-              }}
-              existingImages={image2 ? [image2] : []}
-              limit={1}
-            />
-          </div>
-
-          {/* Project Layout */}
-          <div>
-            <h4 className="text-md font-medium text-white mb-2">Project Layout</h4>
-            <p className="text-sm text-gray-400 mb-2">Placeholder: &#123;&#123;image3&#125;&#125;</p>
-            <ImageUploader
-              onImagesUploaded={(urls) => {
-                const url = urls.length > 0 ? urls[0] : '';
-                setImage3(url);
-                
-                // Create a new object for the parent update
-                const newImages: ImagePlaceholders = {
-                  '{{logo}}': logo,
-                  '{{image1}}': image1,
-                  '{{image2}}': image2,
-                  '{{image3}}': url, // Use the new URL directly
-                  '{{image4}}': image4
-                };
-                
-                // Update parent state
-                setUploadedImages(newImages);
-              }}
-              existingImages={image3 ? [image3] : []}
-              limit={1}
-            />
-          </div>
-
-          {/* Agent Photo */}
-          <div>
-            <h4 className="text-md font-medium text-white mb-2">Agent Photo</h4>
-            <p className="text-sm text-gray-400 mb-2">Placeholder: &#123;&#123;image4&#125;&#125;</p>
-            <ImageUploader
-              onImagesUploaded={(urls) => {
-                const url = urls.length > 0 ? urls[0] : '';
-                setImage4(url);
-                
-                // Create a new object for the parent update
-                const newImages: ImagePlaceholders = {
-                  '{{logo}}': logo,
-                  '{{image1}}': image1,
-                  '{{image2}}': image2,
-                  '{{image3}}': image3,
-                  '{{image4}}': url // Use the new URL directly
-                };
-                
-                // Update parent state
-                setUploadedImages(newImages);
-              }}
-              existingImages={image4 ? [image4] : []}
-              limit={1}
-            />
-          </div>
+          {getImageSections()}
         </div>
       </div>
     </div>

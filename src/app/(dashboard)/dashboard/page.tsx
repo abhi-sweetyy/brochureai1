@@ -13,12 +13,19 @@ import {
   ContactInfoStep,
   ReviewStep,
   ImagesStep,
-  TemplateStep
+  TemplateStep,
+  PagesSelectionStep
 } from '@/components/dashboard/form-steps';
+import { availablePages, PageOption } from '@/components/dashboard/form-steps/PagesSelectionStep';
+import { processPropertyDescription } from '@/utils/ai-helpers';
+import { extractTitle, extractPrice, extractSpace, extractYear } from '@/utils/extractors';
+import mammoth from 'mammoth';
+import { toast } from 'react-hot-toast';
 
 // Define the steps for the form
 const FORM_STEPS = [
   { title: "Template", description: "Select a template for your project" },
+  { title: "Pages", description: "Select pages to include" },
   { title: "Basic Info", description: "Enter basic information about your project" },
   { title: "Property Details", description: "Enter property specifications" },
   { title: "Images", description: "Upload images for your project" },
@@ -53,6 +60,21 @@ interface ImagePlaceholders {
   '{{image4}}': string; // Agent Photo
 }
 
+interface PropertyPlaceholders {
+  phone_number: string;
+  email_address: string;
+  website_name: string;
+  title: string;
+  address: string;
+  shortdescription: string;
+  price: string;
+  date_available: string;
+  name_brokerfirm: string;
+  descriptionlarge: string;
+  descriptionextralarge: string;
+  address_brokerfirm: string;
+}
+
 const Dashboard = () => {
   const { session, isLoading } = useSessionContext();
   const router = useRouter();
@@ -76,7 +98,7 @@ const Dashboard = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Project data state
+  // Replace this:
   const [projectData, setProjectData] = useState({
     // Basic Info (Step 1)
     projectname: '',
@@ -107,6 +129,37 @@ const Dashboard = () => {
     
     // Store amenities as an array
     amenities: [] as string[]
+  });
+
+  // With this:
+  const [placeholders, setPlaceholders] = useState<PropertyPlaceholders>({
+    phone_number: '',
+    email_address: '',
+    website_name: '',
+    title: '',
+    address: '',
+    shortdescription: '',
+    price: '',
+    date_available: '',
+    name_brokerfirm: 'Ihre Immobilienmakler GmbH',
+    descriptionlarge: '',
+    descriptionextralarge: '',
+    address_brokerfirm: 'Musterstraße 123, 12345 Berlin'
+  });
+
+  // Add new state for tracking auto-filled fields and raw property data
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [rawPropertyData, setRawPropertyData] = useState<string>('');
+
+  // Add selectedPages state
+  const [selectedPages, setSelectedPages] = useState<Record<string, boolean>>(() => {
+    // Initialize all pages as selected by default
+    const initialPages: Record<string, boolean> = {};
+    availablePages.forEach((page: PageOption) => {
+      initialPages[page.id] = true;
+    });
+    return initialPages;
   });
 
   // Protect the dashboard route
@@ -208,7 +261,7 @@ const Dashboard = () => {
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setProjectData(prev => ({
+    setPlaceholders(prev => ({
       ...prev,
       [name]: value
     }));
@@ -222,8 +275,13 @@ const Dashboard = () => {
       return;
     }
     
-    if (currentStep === 1 && !projectData.projectname) {
-      setError('Project name is required');
+    if (currentStep === 1 && !selectedPages) {
+      setError('Please select pages to continue');
+      return;
+    }
+    
+    if (currentStep === 2 && !placeholders.title) {
+      setError('Project title is required');
       return;
     }
     
@@ -269,6 +327,76 @@ const Dashboard = () => {
     setLogoUrl(url);
   };
 
+  // Update the handleDocumentUpload function
+  const handleDocumentUpload = async (text: string) => {
+    try {
+      // Display loading toast
+      toast.loading("Extracting property information...", { id: "ai-extraction" });
+      
+      // Store raw text for later use
+      setRawPropertyData(text);
+      
+      console.log("Starting AI extraction for:", text.substring(0, 100) + "...");
+      
+      // Process the document text with AI
+      const result = await processPropertyDescription(text);
+      console.log("AI extraction result:", result);
+      
+      // Check if we got valid results
+      if (!result || !result.placeholders) {
+        toast.error("Failed to extract information from document", { id: "ai-extraction" });
+        return;
+      }
+      
+      // Update placeholders with AI results
+      const newPlaceholders = { ...placeholders };
+      const filledFields: string[] = [];
+      
+      // Loop through all placeholder fields
+      Object.entries(result.placeholders).forEach(([key, value]) => {
+        if (value && typeof value === 'string' && value.trim() !== '') {
+          // Update the value in our state
+          newPlaceholders[key as keyof PropertyPlaceholders] = value;
+          filledFields.push(key);
+          console.log(`Field '${key}' filled with: "${value}"`);
+        }
+      });
+      
+      // Specifically log critical fields for debugging
+      console.log("Title extracted:", result.placeholders.title);
+      console.log("Address extracted:", result.placeholders.address);
+      console.log("Price extracted:", result.placeholders.price);
+      
+      // Update state with new values
+      setPlaceholders(newPlaceholders);
+      setAutoFilledFields(filledFields);
+      
+      // Show success message
+      if (filledFields.length > 0) {
+        toast.success(`Successfully extracted ${filledFields.length} fields`, { id: "ai-extraction" });
+        
+        // Show warning if critical fields weren't extracted
+        const missingCriticalFields = [];
+        if (!filledFields.includes('title')) missingCriticalFields.push('Title');
+        if (!filledFields.includes('address')) missingCriticalFields.push('Address');
+        if (!filledFields.includes('price')) missingCriticalFields.push('Price');
+        
+        if (missingCriticalFields.length > 0) {
+          toast(`Some critical fields couldn't be extracted: ${missingCriticalFields.join(', ')}. Please fill them manually.`, { 
+            duration: 5000,
+            icon: '⚠️'
+          });
+        }
+      } else {
+        toast.error("No fields could be extracted from the document", { id: "ai-extraction" });
+      }
+      
+    } catch (error) {
+      console.error('Error in document upload:', error);
+      toast.error("Error processing document", { id: "ai-extraction" });
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -291,8 +419,8 @@ const Dashboard = () => {
       setUploadStage('uploading');
       
       // Validate required fields
-      if (!projectData.projectname) {
-        setError('Project name is required');
+      if (!placeholders.title) {
+        setError('Property title is required');
         setUploadStage('idle');
         return;
       }
@@ -321,20 +449,21 @@ const Dashboard = () => {
       
       console.log('Creating project with images:', presentationImages);
       
-      // Get user ID directly from session (not using optional chaining)
+      // Get user ID directly from session
       const userId = session.user.id;
       
-      // Create the project with a guaranteed user_id
+      // Create the project with all the placeholders and selected pages
       const { data: newProject, error: insertError } = await supabase
         .from('real_estate_projects')
         .insert({
-          title: projectData.projectname || '',
-          address: projectData.address || '',
+          title: placeholders.title || '',
+          address: placeholders.address || '',
           template_id: selectedTemplate,
           user_id: userId,
           project_details: {
-            ...projectData,
-            amenities: projectData.amenities
+            ...placeholders,
+            raw_property_data: rawPropertyData,
+            selected_pages: selectedPages
           },
           presentation_images: presentationImages,
         })
@@ -370,7 +499,7 @@ const Dashboard = () => {
 
   // Add a function to handle amenities updates
   const handleAmenitiesChange = (amenities: string[]) => {
-    setProjectData(prev => ({
+    setPlaceholders(prev => ({
       ...prev,
       amenities
     }));
@@ -386,47 +515,56 @@ const Dashboard = () => {
           onSelect={handleTemplateSelection}
         />;
       case 1:
-        return (
-          <BasicInfoStep 
-            projectData={projectData} 
-            handleInputChange={handleInputChange} 
-          />
-        );
+        return <PagesSelectionStep 
+          selectedPages={selectedPages}
+          onPagesChange={setSelectedPages}
+        />;
       case 2:
         return (
-          <PropertyDetailsStep 
-            projectData={projectData} 
-            handleInputChange={handleInputChange} 
+          <BasicInfoStep 
+            placeholders={placeholders} 
+            handleInputChange={handleInputChange}
+            handleDocumentUpload={handleDocumentUpload}
+            autoFilledFields={autoFilledFields}
           />
         );
       case 3:
+        return (
+          <PropertyDetailsStep 
+            placeholders={placeholders} 
+            handleInputChange={handleInputChange}
+            autoFilledFields={autoFilledFields}
+          />
+        );
+      case 4:
         return (
           <ImagesStep
             uploadedImages={uploadedImages}
             logoUrl={logoUrl}
             setUploadedImages={setUploadedImages}
             setLogoUrl={setLogoUrl}
-          />
-        );
-      case 4:
-        return (
-          <AmenitiesStep 
-            projectData={projectData} 
-            handleInputChange={handleInputChange}
-            handleAmenitiesChange={handleAmenitiesChange}
+            selectedPages={selectedPages}
           />
         );
       case 5:
         return (
-          <ContactInfoStep 
-            projectData={projectData} 
-            handleInputChange={handleInputChange} 
+          <AmenitiesStep 
+            placeholders={placeholders}
+            handleInputChange={handleInputChange}
           />
         );
       case 6:
         return (
+          <ContactInfoStep 
+            placeholders={placeholders} 
+            handleInputChange={handleInputChange}
+            autoFilledFields={autoFilledFields}
+          />
+        );
+      case 7:
+        return (
           <ReviewStep 
-            projectData={projectData} 
+            placeholders={placeholders} 
             uploadStage={uploadStage} 
             uploadedImages={uploadedImages} 
             logoUrl={logoUrl} 

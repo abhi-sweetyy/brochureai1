@@ -364,8 +364,9 @@ export default function ImageUploader({
         console.log('🔗 Old image URL to replace:', oldImageUrl);
         
         // Check if this is an edited image (might be in a templateId folder)
-        const isInTemplateFolder = oldImageUrl.match(/\/([^\/]+?)\/[^\/]+$/) && 
-                                  !oldImageUrl.includes('/uploads/');
+        const isInTemplateFolder = Boolean(
+          oldImageUrl.includes('/') && !oldImageUrl.includes('/uploads/')
+        );
         
         // Upload the new image, using the same folder as the old one
         const uploadedUrl = await uploadFile(file, oldImageUrl, isInTemplateFolder);

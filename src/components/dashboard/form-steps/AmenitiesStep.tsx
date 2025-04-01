@@ -1,309 +1,202 @@
 "use client";
 
 import React, { useState } from 'react';
-import { MagicWandIcon } from '@radix-ui/react-icons';
+import { PropertyPlaceholders } from '@/types/placeholders';
 
 interface AmenitiesStepProps {
-  projectData: {
-    amenities: string[];
-    summary: string;
-    layoutdescription: string;
-    [key: string]: any;
-  };
+  placeholders: PropertyPlaceholders;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-  handleAmenitiesChange: (amenities: string[]) => void;
 }
 
 const AmenitiesStep: React.FC<AmenitiesStepProps> = ({ 
-  projectData, 
-  handleInputChange,
-  handleAmenitiesChange
+  placeholders, 
+  handleInputChange 
 }) => {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isGeneratingLayout, setIsGeneratingLayout] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Common amenities that match your database structure
-  const commonAmenities = [
-    { id: 'powerbackup', label: 'Power Backup' },
-    { id: 'security', label: 'Security' },
-    { id: 'gym', label: 'Gym' },
-    { id: 'playarea', label: 'Play Area' },
-    { id: 'maintainence', label: 'Maintenance' }
-  ];
+  // This step could be used to extend the shortdescription, descriptionlarge, or descriptionextralarge
+  // fields with AI-generated content based on the basic information
 
-  // Handle checkbox changes - simplified for the new data structure
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    
-    // Update the amenities array based on checkbox state
-    if (checked) {
-      // Add the amenity if it's not already in the array
-      if (!projectData.amenities.includes(name)) {
-        handleAmenitiesChange([...projectData.amenities, name]);
-      }
-    } else {
-      // Remove the amenity from the array
-      handleAmenitiesChange(projectData.amenities.filter(item => item !== name));
-    }
-  };
-
-  const generateContent = async (contentType: 'summary' | 'layout') => {
+  const generateContent = async (contentType: 'shortdescription' | 'descriptionlarge' | 'descriptionextralarge') => {
     try {
-      if (contentType === 'summary') {
+      if (contentType === 'shortdescription') {
         setIsGeneratingSummary(true);
       } else {
         setIsGeneratingLayout(true);
       }
+      
       setError(null);
 
-      // Collect all form inputs for more comprehensive prompt generation
-      const formValues = Object.entries(projectData)
-        .filter(([key, value]) => {
-          // Filter out arrays, objects, and the current field we're generating
-          return value !== undefined && 
-                 value !== null && 
-                 value !== '' && 
-                 !Array.isArray(value) &&
-                 typeof value !== 'object' &&
-                 key !== 'summary' &&
-                 key !== 'layoutdescription';
-        })
-        .map(([key, value]) => {
-          // Format key to be more readable
-          const formattedKey = key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase())
-            .trim();
-            
-          return `${formattedKey}: ${value}`;
-        })
-        .join('\n');
-        
-      // Format amenities for the prompt
-      const amenitiesList = projectData.amenities.length > 0 
-        ? projectData.amenities.map(id => {
-            // Find the label for this amenity ID
-            const amenity = commonAmenities.find(a => a.id === id);
-            return amenity ? amenity.label : id;
-          }).join(', ')
-        : 'None';
-
-      let prompt = '';
-      if (contentType === 'summary') {
-        prompt = `Generate a compelling property summary for a real estate listing with the following details:
-          
-${formValues}
-
-Available Amenities: ${amenitiesList}
-
-The summary should be engaging, highlight the key features, and be approximately 3-4 sentences long. Focus on the property's unique selling points and the available amenities.`;
+      // Here you would typically call an AI API to generate content
+      // For now, we'll just simulate a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Sample content for demonstration
+      let generatedContent = '';
+      
+      if (contentType === 'shortdescription') {
+        generatedContent = `Beautiful ${placeholders.title} located at ${placeholders.address}. Available for viewing today!`;
+      } else if (contentType === 'descriptionlarge') {
+        generatedContent = `This property features an excellent site plan with optimal positioning. ${placeholders.title} offers a great opportunity in a prime location.`;
       } else {
-        prompt = `Generate a detailed layout description for a real estate property with the following details:
-          
-${formValues}
-
-Available Amenities: ${amenitiesList}
-
-The layout description should describe the floor plan, room arrangement, and special features of the property. It should be approximately 3-4 sentences long. Be specific about spatial arrangements and how the amenities fit into the overall layout.`;
+        generatedContent = `${placeholders.title} is a premium property located at ${placeholders.address}. With a competitive price of ${placeholders.price}, this property won't last long on the market. Contact us at ${placeholders.phone_number} to arrange a viewing.`;
       }
-
-      // Show loading animation in the textarea
-      const loadingMessage = `✨ Generating ${contentType === 'summary' ? 'property summary' : 'layout description'}...`;
-      const loadingEvent = {
-        target: {
-          name: contentType === 'summary' ? 'summary' : 'layoutdescription',
-          value: loadingMessage
-        }
-      } as React.ChangeEvent<HTMLTextAreaElement>;
-      handleInputChange(loadingEvent);
-
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || ''}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Real Estate Project Generator'
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-pro-exp-02-05:free',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      const generatedText = data.choices[0]?.message?.content?.trim() || '';
-
-      const syntheticEvent = {
-        target: {
-          name: contentType === 'summary' ? 'summary' : 'layoutdescription',
-          value: generatedText
-        }
-      } as React.ChangeEvent<HTMLTextAreaElement>;
-
-      handleInputChange(syntheticEvent);
-
-    } catch (err) {
-      console.error('Error generating content:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate content');
       
-      // Clear loading message on error
-      const clearEvent = {
+      // Update placeholder with generated content
+      // This is where you'd typically use a function passed from props
+      const event = {
         target: {
-          name: contentType === 'summary' ? 'summary' : 'layoutdescription',
-          value: ''
+          name: contentType,
+          value: generatedContent
         }
       } as React.ChangeEvent<HTMLTextAreaElement>;
-      handleInputChange(clearEvent);
       
+      handleInputChange(event);
+      
+    } catch (error: any) {
+      console.error('Error generating content:', error);
+      setError(error.message || 'Failed to generate content');
     } finally {
-      if (contentType === 'summary') {
-        setIsGeneratingSummary(false);
-      } else {
-        setIsGeneratingLayout(false);
-      }
+      setIsGeneratingSummary(false);
+      setIsGeneratingLayout(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
-        </div>
-      )}
-      
-      <h2 className="text-xl font-semibold">Features & Amenities</h2>
-      
-      {/* Amenities checkboxes moved from property details */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {commonAmenities.map(amenity => (
-            <div key={amenity.id} className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id={amenity.id}
-                name={amenity.id}
-                checked={projectData.amenities.includes(amenity.id)}
-                onChange={handleCheckboxChange}
-                className="h-4 w-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 bg-[#1D2839]"
-              />
-              <label htmlFor={amenity.id} className="text-sm text-gray-300">
-                {amenity.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Project Summary */}
       <div>
-        <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Project Summary
-          </label>
-          <button
-            type="button"
-            onClick={() => generateContent('summary')}
-            disabled={isGeneratingSummary}
-            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded flex items-center space-x-1"
-          >
-            {isGeneratingSummary ? (
-              <>
-                <span>Generating</span>
-                <div className="flex space-x-1 ml-1">
-                  <div className="h-1 w-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="h-1 w-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="h-1 w-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                </div>
-              </>
-            ) : (
-              <>
-                <span>Generate with AI</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                </svg>
-              </>
-            )}
-          </button>
-        </div>
-        <div className="relative">
-          <textarea
-            name="summary"
-            value={projectData.summary}
-            onChange={handleInputChange}
-            rows={4}
-            className={`w-full bg-[#1D2839] border border-[#2A3441] rounded-md px-3 py-2 text-white ${isGeneratingSummary ? 'opacity-50' : ''}`}
-            placeholder="Enter a summary of your project"
-            disabled={isGeneratingSummary}
-          ></textarea>
-          {isGeneratingSummary && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+        <h3 className="text-white text-lg font-medium mb-4">Additional Property Details & AI Assistance</h3>
+        <p className="text-gray-400 mb-6">Enhance your property description with AI-generated content</p>
+        
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+        
+        <div className="grid grid-cols-1 gap-6">
+          <div className="bg-[#111927] border border-[#1c2a47] rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="text-white font-medium mb-1">Short Description</h4>
+                <p className="text-sm text-gray-400 mb-4">A brief summary of the property</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => generateContent('shortdescription')}
+                disabled={isGeneratingSummary}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center disabled:opacity-50"
+              >
+                {isGeneratingSummary ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                    </svg>
+                    Generate with AI
+                  </>
+                )}
+              </button>
             </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Layout Description */}
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Layout Description
-          </label>
-          <button
-            type="button"
-            onClick={() => generateContent('layout')}
-            disabled={isGeneratingLayout}
-            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded flex items-center space-x-1"
-          >
-            {isGeneratingLayout ? (
-              <>
-                <span>Generating</span>
-                <div className="flex space-x-1 ml-1">
-                  <div className="h-1 w-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="h-1 w-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="h-1 w-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                </div>
-              </>
-            ) : (
-              <>
-                <span>Generate with AI</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                </svg>
-              </>
-            )}
-          </button>
-        </div>
-        <div className="relative">
-          <textarea
-            name="layoutdescription"
-            value={projectData.layoutdescription}
-            onChange={handleInputChange}
-            rows={4}
-            className={`w-full bg-[#1D2839] border border-[#2A3441] rounded-md px-3 py-2 text-white ${isGeneratingLayout ? 'opacity-50' : ''}`}
-            placeholder="Describe the layout of your property"
-            disabled={isGeneratingLayout}
-          ></textarea>
-          {isGeneratingLayout && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+            <textarea
+              name="shortdescription"
+              value={placeholders.shortdescription || ''}
+              onChange={handleInputChange}
+              rows={2}
+              className="w-full bg-[#1D2839] border border-[#2A3441] rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+              placeholder="Enter a short property description"
+            />
+          </div>
+          
+          <div className="bg-[#111927] border border-[#1c2a47] rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="text-white font-medium mb-1">Site Plan Description</h4>
+                <p className="text-sm text-gray-400 mb-4">Describe the property's site plan and position</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => generateContent('descriptionlarge')}
+                disabled={isGeneratingLayout}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center disabled:opacity-50"
+              >
+                {isGeneratingLayout ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                    </svg>
+                    Generate with AI
+                  </>
+                )}
+              </button>
             </div>
-          )}
+            <textarea
+              name="descriptionlarge"
+              value={placeholders.descriptionlarge || ''}
+              onChange={handleInputChange}
+              rows={4}
+              className="w-full bg-[#1D2839] border border-[#2A3441] rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+              placeholder="Enter details about the property's site plan and position"
+            />
+          </div>
+          
+          <div className="bg-[#111927] border border-[#1c2a47] rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="text-white font-medium mb-1">Detailed Property Description</h4>
+                <p className="text-sm text-gray-400 mb-4">Provide a comprehensive description of the property</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => generateContent('descriptionextralarge')}
+                disabled={isGeneratingLayout}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center disabled:opacity-50"
+              >
+                {isGeneratingLayout ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                    </svg>
+                    Generate with AI
+                  </>
+                )}
+              </button>
+            </div>
+            <textarea
+              name="descriptionextralarge"
+              value={placeholders.descriptionextralarge || ''}
+              onChange={handleInputChange}
+              rows={10}
+              className="w-full bg-[#1D2839] border border-[#2A3441] rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+              style={{ whiteSpace: 'pre-wrap' }}
+              placeholder="Enter a detailed description of the property"
+            />
+          </div>
         </div>
       </div>
     </div>

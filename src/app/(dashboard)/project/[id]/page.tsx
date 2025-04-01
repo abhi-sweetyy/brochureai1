@@ -11,35 +11,29 @@ import { toast } from 'react-hot-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { motion } from 'framer-motion';
 
+// Define only the fields we need for our placeholders
 interface Project {
   id: string;
   title: string;
   address: string;
   presentation_images: string[];
   project_details: {
-    website?: string;
-    email?: string;
-    phone?: string;
-    summary?: string;
-    category?: string;
-    yearofconstruction?: string;
-    condition?: string;
-    qualityofequipment?: string;
+    phone_number?: string;
+    email_address?: string;
+    website_name?: string;
+    // title is from the main project
+    // address is from the main project
+    shortdescription?: string;
     price?: string;
-    space?: string;
-    layoutdescription?: string;
-    balcony?: boolean;
-    amenities: string[];
-    powerbackup?: boolean;
-    security?: boolean;
-    gym?: boolean;
-    playarea?: boolean;
-    maintainence?: string;
+    date_available?: string;
+    name_brokerfirm?: string;
+    descriptionlarge?: string;
+    descriptionextralarge?: string;
+    address_brokerfirm?: string;
+    amenities?: string[];
   };
+  presentation_id?: string;
   last_updated?: string;
-  status?: string;
-  template_id?: string;
-  document_url?: string;
 }
 
 export default function ProjectEditor() {
@@ -62,8 +56,6 @@ export default function ProjectEditor() {
   const [uploading, setUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [credits, setCredits] = useState<number | null>(null);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [isGeneratingLayout, setIsGeneratingLayout] = useState(false);
 
   // Fetch project data with security checks
   useEffect(() => {
@@ -101,18 +93,56 @@ export default function ProjectEditor() {
           setIsLoading(false);
           return;
         }
+
+        // Extract existing placeholder values from projectData.project_details if they exist
+        const existingDetails = projectData.project_details || {};
         
-        // Merge column data with JSONB details
-        const mergedData = {
-          ...projectData,
-          ...projectData.project_details,
-          project_details: projectData.project_details || {}
+        // Build our focused project details with just what we need
+        const focusedDetails: Project['project_details'] = {
+          phone_number: existingDetails.phone_number || existingDetails.phone || '',
+          email_address: existingDetails.email_address || existingDetails.email || '',
+          website_name: existingDetails.website_name || existingDetails.website || '',
+          shortdescription: existingDetails.shortdescription || existingDetails.summary || '',
+          price: existingDetails.price || '',
+          date_available: existingDetails.date_available || existingDetails.yearofconstruction || '',
+          name_brokerfirm: existingDetails.name_brokerfirm || '',
+          descriptionlarge: existingDetails.descriptionlarge || existingDetails.layoutdescription || '',
+          descriptionextralarge: existingDetails.descriptionextralarge || existingDetails.summary || '',
+          address_brokerfirm: existingDetails.address_brokerfirm || projectData.address || '',
+          amenities: existingDetails.amenities || []
+        };
+        
+        // Create a focused project object with only what we need
+        const focusedProject = {
+          id: projectData.id,
+          title: projectData.title,
+          address: projectData.address,
+          presentation_images: projectData.presentation_images || [],
+          project_details: focusedDetails,
+          presentation_id: projectData.presentation_id,
+          last_updated: projectData.last_updated
         };
 
-        setProject(mergedData);
-        setUploadedImages(mergedData.presentation_images || []);
-        setProjectDetails(mergedData.project_details);
-        updatePlaceholders(mergedData);
+        setProject(focusedProject);
+        setUploadedImages(focusedProject.presentation_images);
+        setProjectDetails(focusedDetails);
+        
+        // Set the placeholders based on our focused data structure
+        setPlaceholders({
+          'phone_number': focusedDetails.phone_number || '',
+          'email_address': focusedDetails.email_address || '',
+          'website_name': focusedDetails.website_name || '',
+          'title': projectData.title || '',
+          'address': projectData.address || '',
+          'shortdescription': focusedDetails.shortdescription || '',
+          'price': focusedDetails.price || '',
+          'date_available': focusedDetails.date_available || '',
+          'name_brokerfirm': focusedDetails.name_brokerfirm || '',
+          'descriptionlarge': focusedDetails.descriptionlarge || '',
+          'descriptionextralarge': focusedDetails.descriptionextralarge || '',
+          'address_brokerfirm': focusedDetails.address_brokerfirm || ''
+        });
+        
       } catch (error: any) {
         console.error('Error fetching project:', error);
         setError(error.message || 'Failed to load project data');
@@ -126,55 +156,68 @@ export default function ProjectEditor() {
     }
   }, [params.id, supabase, session, router]);
 
-  // Initialize amenities as an empty array if it doesn't exist
-  useEffect(() => {
-    if (projectDetails && !projectDetails.amenities) {
-      setProjectDetails(prev => ({
-        ...prev,
-        amenities: []
-      }));
-    }
-  }, [projectDetails]);
-
-  // Update placeholders
-  const updatePlaceholders = (projectData: any) => {
-    const details = projectData.project_details || {};
-    const newPlaceholders: Record<string, string> = {
-      '{{projectname}}': projectData.title || '',
-      '{{website}}': details.website || '',
-      '{{email}}': details.email || '',
-      '{{summary}}': details.summary || '',
-      '{{phone}}': details.phone || '',
-      '{{address}}': projectData.address || '',
-      '{{category}}': details.category || '',
-      '{{yearofconstruction}}': details.yearofconstruction || '',
-      '{{condition}}': details.condition || '',
-      '{{qualityofequipment}}': details.qualityofequipment || '',
-      '{{price}}': details.price || '',
-      '{{space}}': details.space || '',
-      '{{balcony}}': details.balcony ? 'Yes' : 'No',
-      
-      '{{powerbackup}}': details.amenities?.includes('powerbackup') ? 'Yes' : 'No',
-      '{{security}}': details.amenities?.includes('security') ? 'Yes' : 'No',
-      '{{gym}}': details.amenities?.includes('gym') ? 'Yes' : 'No',
-      '{{playarea}}': details.amenities?.includes('playarea') ? 'Yes' : 'No',
-      '{{maintainence}}': details.amenities?.includes('maintainence') ? 'Yes' : 'No',
-      
-      '{{layoutdescription}}': details.layoutdescription || '',
-    };
-
-    // For backward compatibility with templates that still expect amenity1, amenity2, etc.
-    for (let i = 1; i <= 10; i++) {
-      newPlaceholders[`{{amenity${i}}}`] = '';
-      newPlaceholders[`{{ad${i}}}`] = '';
-    }
-
-    setPlaceholders(newPlaceholders);
+  // Handle input change - updating both projectDetails and placeholders
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    console.log(`Updating ${name} with value: ${value.substring(0, 30)}...`);
+    
+    // Update project details with functional update
+    setProjectDetails(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Update placeholders directly with functional update
+    setPlaceholders(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  // Handle save
+  // Handle title/address changes which are special cases
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Functional update for project state
+    setProject(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        title: value
+      };
+    });
+    
+    // Functional update for placeholders
+    setPlaceholders(prev => ({
+      ...prev, 
+      title: value
+    }));
+  };
+  
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Functional update for project state
+    setProject(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        address: value
+      };
+    });
+    
+    // Functional update for placeholders
+    setPlaceholders(prev => ({
+      ...prev, 
+      address: value,
+      address_brokerfirm: value
+    }));
+  };
+
+  // Handle saving the focused project details
   const handleSave = async () => {
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !project) {
       router.replace('/sign-in');
       return;
     }
@@ -197,12 +240,33 @@ export default function ProjectEditor() {
         return;
       }
       
-      // Make sure to include all the updated project details
+      // Prepare update payload - IMPORTANT: don't modify original project details structure
+      const { data: currentProject } = await supabase
+        .from('real_estate_projects')
+        .select('project_details')
+        .eq('id', project.id)
+        .single();
+      
+      // Create a new object with current project details as base
+      const updatedProjectDetails = {
+        ...(currentProject?.project_details || {}),
+        // Update only our specific placeholders
+        phone_number: projectDetails.phone_number,
+        email_address: projectDetails.email_address,
+        website_name: projectDetails.website_name,
+        shortdescription: projectDetails.shortdescription,
+        price: projectDetails.price,
+        date_available: projectDetails.date_available,
+        name_brokerfirm: projectDetails.name_brokerfirm,
+        descriptionlarge: projectDetails.descriptionlarge,
+        descriptionextralarge: projectDetails.descriptionextralarge,
+        address_brokerfirm: projectDetails.address_brokerfirm,
+      };
+      
       const updatePayload = {
-        title: project!.title,
-        address: project!.address,
-        user_id: session.user.id, // Ensure user_id is always set correctly
-        project_details: projectDetails,
+        title: project.title,
+        address: project.address,
+        project_details: updatedProjectDetails,
         presentation_images: uploadedImages,
         last_updated: new Date().toISOString()
       };
@@ -210,11 +274,26 @@ export default function ProjectEditor() {
       const { error } = await supabase
         .from('real_estate_projects')
         .update(updatePayload)
-        .eq('id', project!.id);
+        .eq('id', project.id);
 
       if (error) throw error;
       
-      // Show a visual success effect
+      // Update local state safely with the new data
+      setProject(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          title: project.title,
+          address: project.address,
+          project_details: {
+            ...prev.project_details,
+            ...projectDetails
+          },
+          presentation_images: uploadedImages,
+          last_updated: new Date().toISOString()
+        };
+      });
+      
       toast.success('Project saved successfully');
     } catch (error) {
       console.error('Error saving project:', error);
@@ -222,6 +301,60 @@ export default function ProjectEditor() {
       toast.error('Failed to save project');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (file: File) => {
+    try {
+      setUploading(true);
+      
+      // Upload the new image
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${params.id}/${fileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('docx')
+        .upload(filePath, file);
+      
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      // Get the public URL from the correct bucket
+      const { data: publicUrlData } = supabase.storage
+        .from('docx')
+        .getPublicUrl(filePath);
+      
+      const newImageUrl = publicUrlData.publicUrl;
+      
+      // Add the new image to the array
+      const newImages = [...uploadedImages, newImageUrl];
+      
+      // Update the project in the database
+      const { data: updateData, error: updateError } = await supabase
+        .from('real_estate_projects')
+        .update({ 
+          presentation_images: newImages,
+          last_updated: new Date().toISOString()
+        })
+        .eq('id', params.id)
+        .select();
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      // Only update the state after successful database update
+      setUploadedImages(newImages);
+      toast.success('Image uploaded successfully');
+      
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -306,109 +439,7 @@ export default function ProjectEditor() {
     }
   };
 
-  // Handle document generation
-  const handleGenerateDocument = () => {
-    setGenerating(true);
-    setShouldProcessDocument(true);
-  };
-
-  // Handle document processed
-  const handleDocumentProcessed = () => {
-    setGenerating(false);
-    setShouldProcessDocument(false);
-  };
-
-  // Handle input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const isCheckbox = type === 'checkbox';
-    const inputValue = isCheckbox ? (e.target as HTMLInputElement).checked : value;
-    
-    // Update project details
-    setProjectDetails(prev => ({
-      ...prev,
-      [name]: inputValue
-    }));
-  };
-
-  // Helper function to handle amenity checkbox changes
-  const handleAmenityChange = (amenityId: string, checked: boolean) => {
-    setProjectDetails(prev => {
-      // Ensure amenities is initialized as an array
-      const currentAmenities = prev.amenities || [];
-      
-      let newAmenities;
-      if (checked) {
-        // Add amenity if it doesn't exist
-        newAmenities = currentAmenities.includes(amenityId) 
-          ? currentAmenities 
-          : [...currentAmenities, amenityId];
-      } else {
-        // Remove amenity if it exists
-        newAmenities = currentAmenities.filter(a => a !== amenityId);
-      }
-      
-      return {
-        ...prev,
-        amenities: newAmenities
-      };
-    });
-  };
-
-  // Handle image upload
-  const handleImageUpload = async (file: File) => {
-    try {
-      setUploading(true);
-      
-      // Upload the new image
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${params.id}/${fileName}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('docx')
-        .upload(filePath, file);
-      
-      if (uploadError) {
-        throw uploadError;
-      }
-      
-      // Get the public URL from the correct bucket
-      const { data: publicUrlData } = supabase.storage
-        .from('docx')
-        .getPublicUrl(filePath);
-      
-      const newImageUrl = publicUrlData.publicUrl;
-      
-      // Add the new image to the array
-      const newImages = [...uploadedImages, newImageUrl];
-      
-      // Update the project in the database
-      const { data: updateData, error: updateError } = await supabase
-        .from('real_estate_projects')
-        .update({ 
-          presentation_images: newImages,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', params.id)
-        .select();
-      
-      if (updateError) {
-        throw updateError;
-      }
-      
-      // Only update the state after successful database update
-      setUploadedImages(newImages);
-      toast.success('Image uploaded successfully');
-      
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
-    } finally {
-      setUploading(false);
-    }
-  };
-
+  // Fetch user credits
   const fetchCredits = async () => {
     if (session?.user) {
       const { data, error } = await supabase
@@ -429,262 +460,16 @@ export default function ProjectEditor() {
     }
   }, [session]);
 
-  // Update the handleGenerateSummary function
-  const handleGenerateSummary = async () => {
-    try {
-      if (!session?.user?.id) {
-        toast.error('You must be logged in to use AI features');
-        return;
-      }
-
-      setIsGeneratingSummary(true);
-      
-      // Collect all form inputs for more comprehensive prompt generation
-      const formValues = Object.entries(projectDetails)
-        .filter(([key, value]) => {
-          // Filter out arrays, objects, and the current field we're generating
-          return value !== undefined && 
-                 value !== null && 
-                 value !== '' && 
-                 !Array.isArray(value) &&
-                 typeof value !== 'object' &&
-                 key !== 'summary' &&
-                 key !== 'layoutdescription' &&
-                 key !== 'amenities';
-        })
-        .map(([key, value]) => {
-          // Format key to be more readable
-          const formattedKey = key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase())
-            .trim();
-            
-          return `${formattedKey}: ${value}`;
-        })
-        .join('\n');
-        
-      // Format amenities for the prompt
-      const commonAmenities = [
-        { id: 'powerbackup', label: 'Power Backup' },
-        { id: 'security', label: 'Security' },
-        { id: 'gym', label: 'Gym' },
-        { id: 'playarea', label: 'Play Area' },
-        { id: 'maintainence', label: 'Maintenance' }
-      ];
-      
-      const amenitiesList = projectDetails.amenities.length > 0 
-        ? projectDetails.amenities.map(id => {
-            // Find the label for this amenity ID
-            const amenity = commonAmenities.find(a => a.id === id);
-            return amenity ? amenity.label : id;
-          }).join(', ')
-        : 'None';
-
-      // Create the prompt
-      const prompt = `Generate a compelling property summary for a real estate listing with the following details:
-        
-Project Name: ${project?.title || 'Untitled Project'}
-Address: ${project?.address || 'No address provided'}
-${formValues}
-
-Available Amenities: ${amenitiesList}
-
-The summary should be engaging, highlight the key features, and be approximately 3-4 sentences long. Focus on the property's unique selling points and the available amenities.`;
-
-      // Make request to OpenRouter API - exactly as in AmenitiesStep.tsx
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || ''}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Real Estate Project Generator'
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-pro-exp-02-05:free',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      const generatedSummary = data.choices[0]?.message?.content?.trim() || '';
-      
-      // Update the projectDetails with the AI-generated summary
-      const updatedProjectDetails = {
-        ...projectDetails,
-        summary: generatedSummary
-      };
-      
-      setProjectDetails(updatedProjectDetails);
-
-      // Update placeholders
-      setPlaceholders(prev => ({
-        ...prev,
-        '{{summary}}': generatedSummary
-      }));
-
-      // Also update directly in Supabase for persistence
-      const { error } = await supabase
-        .from('real_estate_projects')
-        .update({ 
-          project_details: updatedProjectDetails,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', params.id);
-        
-      if (error) {
-        console.error('Error saving summary to database:', error);
-        toast.error('Generated but failed to save to database');
-        return;
-      }
-
-      toast.success('Summary generated successfully');
-    } catch (error) {
-      console.error('Error generating summary:', error);
-      toast.error('Failed to generate summary');
-    } finally {
-      setIsGeneratingSummary(false);
-    }
+  // Handle document generation
+  const handleGenerateDocument = () => {
+    setGenerating(true);
+    setShouldProcessDocument(true);
   };
 
-  // Update the handleGenerateLayout function
-  const handleGenerateLayout = async () => {
-    try {
-      if (!session?.user?.id) {
-        toast.error('You must be logged in to use AI features');
-        return;
-      }
-
-      setIsGeneratingLayout(true);
-      
-      // Collect all form inputs for more comprehensive prompt generation
-      const formValues = Object.entries(projectDetails)
-        .filter(([key, value]) => {
-          // Filter out arrays, objects, and the current field we're generating
-          return value !== undefined && 
-                 value !== null && 
-                 value !== '' && 
-                 !Array.isArray(value) &&
-                 typeof value !== 'object' &&
-                 key !== 'summary' &&
-                 key !== 'layoutdescription' &&
-                 key !== 'amenities';
-        })
-        .map(([key, value]) => {
-          // Format key to be more readable
-          const formattedKey = key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase())
-            .trim();
-            
-          return `${formattedKey}: ${value}`;
-        })
-        .join('\n');
-        
-      // Format amenities for the prompt
-      const commonAmenities = [
-        { id: 'powerbackup', label: 'Power Backup' },
-        { id: 'security', label: 'Security' },
-        { id: 'gym', label: 'Gym' },
-        { id: 'playarea', label: 'Play Area' },
-        { id: 'maintainence', label: 'Maintenance' }
-      ];
-      
-      const amenitiesList = projectDetails.amenities.length > 0 
-        ? projectDetails.amenities.map(id => {
-            // Find the label for this amenity ID
-            const amenity = commonAmenities.find(a => a.id === id);
-            return amenity ? amenity.label : id;
-          }).join(', ')
-        : 'None';
-
-      // Create the prompt
-      const prompt = `Generate a detailed layout description for a real estate property with the following details:
-        
-Project Name: ${project?.title || 'Untitled Project'}
-Address: ${project?.address || 'No address provided'}
-${formValues}
-
-Available Amenities: ${amenitiesList}
-
-The layout description should describe the floor plan, room arrangement, and special features of the property. It should be approximately 3-4 sentences long. Be specific about spatial arrangements and how the amenities fit into the overall layout.`;
-
-      // Make request to OpenRouter API - exactly as in AmenitiesStep.tsx
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || ''}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Real Estate Project Generator'
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-pro-exp-02-05:free',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      const generatedLayout = data.choices[0]?.message?.content?.trim() || '';
-      
-      // Update the projectDetails with the AI-generated layout description
-      const updatedProjectDetails = {
-        ...projectDetails,
-        layoutdescription: generatedLayout
-      };
-      
-      setProjectDetails(updatedProjectDetails);
-
-      // Update placeholders
-      setPlaceholders(prev => ({
-        ...prev,
-        '{{layoutdescription}}': generatedLayout
-      }));
-
-      // Also update directly in Supabase for persistence
-      const { error } = await supabase
-        .from('real_estate_projects')
-        .update({ 
-          project_details: updatedProjectDetails,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', params.id);
-        
-      if (error) {
-        console.error('Error saving layout to database:', error);
-        toast.error('Generated but failed to save to database');
-        return;
-      }
-
-      toast.success('Layout description generated successfully');
-    } catch (error) {
-      console.error('Error generating layout description:', error);
-      toast.error('Failed to generate layout description');
-    } finally {
-      setIsGeneratingLayout(false);
-    }
+  // Handle document processed
+  const handleDocumentProcessed = () => {
+    setGenerating(false);
+    setShouldProcessDocument(false);
   };
 
   const renderContent = () => {
@@ -698,456 +483,317 @@ The layout description should describe the floor plan, room arrangement, and spe
       );
     }
 
+    // Add handler for presentation generation
+    const handlePresentationGenerated = () => {
+      // Use functional update to prevent race conditions
+      setProject(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          presentation_id: 'generated'
+        };
+      });
+    };
+
     return (
       <>
-        <h1 className="text-2xl font-bold">{project!.title || 'Untitled Project'}</h1>
-        <p className="text-gray-400">{project!.address || 'No address'}</p>
+        <h1 className="text-2xl font-bold">{project.title || 'Untitled Project'}</h1>
+        <p className="text-gray-400">{project.address || 'No address'}</p>
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
-          <div className="lg:col-span-7">
-            <div className="bg-[#0c1324] border border-[#1c2a47] rounded-xl overflow-hidden mb-8 shadow-xl">
-              <div className="flex border-b border-[#1c2a47]">
-                <button
-                  onClick={() => setActiveTab('basic-info')}
-                  className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
-                    activeTab === 'basic-info' 
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
-                      : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
-                  }`}
-                >
-                  Basic Info
-                </button>
-                <button
-                  onClick={() => setActiveTab('property-details')}
-                  className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
-                    activeTab === 'property-details' 
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
-                      : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
-                  }`}
-                >
-                  Property Details
-                </button>
-                <button
-                  onClick={() => setActiveTab('amenities')}
-                  className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
-                    activeTab === 'amenities' 
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
-                      : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
-                  }`}
-                >
-                  Amenities
-                </button>
-                <button
-                  onClick={() => setActiveTab('images')}
-                  className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
-                    activeTab === 'images' 
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
-                      : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
-                  }`}
-                >
-                  Images
-                </button>
-              </div>
+          {!project.presentation_id && (
+            <div className="lg:col-span-7">
+              <div className="bg-[#0c1324] border border-[#1c2a47] rounded-xl overflow-hidden mb-8 shadow-xl">
+                <div className="flex border-b border-[#1c2a47]">
+                  <button
+                    onClick={() => setActiveTab('basic-info')}
+                    className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
+                      activeTab === 'basic-info' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
+                        : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
+                    }`}
+                  >
+                    Property Info
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('descriptions')}
+                    className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
+                      activeTab === 'descriptions' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
+                        : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
+                    }`}
+                  >
+                    Descriptions
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('images')}
+                    className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
+                      activeTab === 'images' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
+                        : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
+                    }`}
+                  >
+                    Images
+                  </button>
+                </div>
 
-              <div className="p-6">
-                {activeTab === 'basic-info' && (
-                  <div className="space-y-6">
-                    <div>
-                      <label htmlFor="title" className="block text-sm font-medium text-white mb-1">
-                        Project Name
-                      </label>
-                      <input
-                        type="text"
-                        id="title"
-                        name="title"
-                        value={project!.title || ''}
-                        onChange={(e) => setProject(prev => prev ? {...prev, title: e.target.value} : null)}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="website" className="block text-sm font-medium text-white mb-1">
-                        Website
-                      </label>
-                      <input
-                        type="text"
-                        id="website"
-                        name="website"
-                        value={projectDetails.website || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-white mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={projectDetails.email || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-white mb-1">
-                        Phone
-                      </label>
-                      <input
-                        type="text"
-                        id="phone"
-                        name="phone"
-                        value={projectDetails.phone || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="address" className="block text-sm font-medium text-white mb-1">
-                        Address
-                      </label>
-                      <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        value={project!.address || ''}
-                        onChange={(e) => setProject(prev => prev ? {...prev, address: e.target.value} : null)}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'property-details' && (
-                  <div className="space-y-6">
-                    <div>
-                      <label htmlFor="category" className="block text-sm font-medium text-white mb-1">
-                        Category
-                      </label>
-                      <select
-                        id="category"
-                        name="category"
-                        value={projectDetails.category || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select category</option>
-                        <option value="Residential">Residential</option>
-                        <option value="Commercial">Commercial</option>
-                        <option value="Industrial">Industrial</option>
-                        <option value="Land">Land</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="yearofconstruction" className="block text-sm font-medium text-white mb-1">
-                        Year of Construction
-                      </label>
-                      <input
-                        type="text"
-                        id="yearofconstruction"
-                        name="yearofconstruction"
-                        value={projectDetails.yearofconstruction || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="condition" className="block text-sm font-medium text-white mb-1">
-                        Condition
-                      </label>
-                      <select
-                        id="condition"
-                        name="condition"
-                        value={projectDetails.condition || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select condition</option>
-                        <option value="New">New</option>
-                        <option value="Excellent">Excellent</option>
-                        <option value="Good">Good</option>
-                        <option value="Fair">Fair</option>
-                        <option value="Poor">Poor</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="price" className="block text-sm font-medium text-white mb-1">
-                        Price
-                      </label>
-                      <input
-                        type="text"
-                        id="price"
-                        name="price"
-                        value={projectDetails.price || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="space" className="block text-sm font-medium text-white mb-1">
-                        Space (sq ft)
-                      </label>
-                      <input
-                        type="text"
-                        id="space"
-                        name="space"
-                        value={projectDetails.space || ''}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'amenities' && (
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-medium text-white">Features & Amenities</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="powerbackup"
-                          name="powerbackup"
-                          checked={projectDetails.amenities?.includes('powerbackup') || false}
-                          onChange={(e) => handleAmenityChange('powerbackup', e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="powerbackup" className="ml-2 block text-sm text-white">
-                          Power Backup
+                <div className="p-6">
+                  {activeTab === 'basic-info' && (
+                    <div className="space-y-6">
+                      <div>
+                        <label htmlFor="title" className="block text-sm font-medium text-white mb-1">
+                          Property Title
                         </label>
+                        <input
+                          type="text"
+                          id="title"
+                          name="title"
+                          value={project.title || ''}
+                          onChange={handleTitleChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
                       </div>
                       
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="security"
-                          name="security"
-                          checked={projectDetails.amenities?.includes('security') || false}
-                          onChange={(e) => handleAmenityChange('security', e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="security" className="ml-2 block text-sm text-white">
-                          Security
+                      <div>
+                        <label htmlFor="address" className="block text-sm font-medium text-white mb-1">
+                          Property Address
                         </label>
+                        <input
+                          type="text"
+                          id="address"
+                          name="address"
+                          value={project.address || ''}
+                          onChange={handleAddressChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
                       </div>
                       
-                      <div className="flex items-center">
+                      <div>
+                        <label htmlFor="price" className="block text-sm font-medium text-white mb-1">
+                          Price
+                        </label>
                         <input
-                          type="checkbox"
-                          id="gym"
-                          name="gym"
-                          checked={projectDetails.amenities?.includes('gym') || false}
-                          onChange={(e) => handleAmenityChange('gym', e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="gym" className="ml-2 block text-sm text-white">
-                          Gym
-                        </label>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="playarea"
-                          name="playarea"
-                          checked={projectDetails.amenities?.includes('playarea') || false}
-                          onChange={(e) => handleAmenityChange('playarea', e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="playarea" className="ml-2 block text-sm text-white">
-                          Play Area
-                        </label>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="maintainence"
-                          name="maintainence"
-                          checked={projectDetails.amenities?.includes('maintainence') || false}
-                          onChange={(e) => handleAmenityChange('maintainence', e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="maintainence" className="ml-2 block text-sm text-white">
-                          Maintenance
-                        </label>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label htmlFor="summary" className="block text-sm font-medium text-white">
-                          Project Summary
-                        </label>
-                        <button
-                          onClick={handleGenerateSummary}
-                          disabled={isGeneratingSummary}
-                          className="group relative inline-flex items-center overflow-hidden rounded-md bg-gradient-to-r from-blue-600 to-indigo-700 px-3 py-1 text-xs font-medium text-white transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg focus:outline-none disabled:opacity-70"
-                        >
-                          {isGeneratingSummary ? (
-                            <>
-                              <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Generating...
-                            </>
-                          ) : (
-                            <>Generate with AI</>
-                          )}
-                        </button>
-                      </div>
-                      <motion.div
-                        initial={{ opacity: 0.8 }}
-                        animate={{
-                          opacity: isGeneratingSummary ? [0.5, 1, 0.5] : 1,
-                          transition: {
-                            duration: 2,
-                            repeat: isGeneratingSummary ? Infinity : 0
-                          }
-                        }}
-                      >
-                        <textarea
-                          id="summary"
-                          name="summary"
-                          value={projectDetails.summary || ''}
+                          type="text"
+                          id="price"
+                          name="price"
+                          value={projectDetails.price || ''}
                           onChange={handleInputChange}
-                          rows={4}
-                          className={`w-full bg-[#111b33] border ${isGeneratingSummary ? 'border-blue-500/50' : 'border-[#1c2a47]'} rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300`}
-                          placeholder="Enter a summary of your project or use AI to generate one"
-                          disabled={isGeneratingSummary}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
-                      </motion.div>
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="date_available" className="block text-sm font-medium text-white mb-1">
+                          Date Available
+                        </label>
+                        <input
+                          type="text"
+                          id="date_available"
+                          name="date_available"
+                          value={projectDetails.date_available || ''}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="phone_number" className="block text-sm font-medium text-white mb-1">
+                          Phone Number
+                        </label>
+                        <input
+                          type="text"
+                          id="phone_number"
+                          name="phone_number"
+                          value={projectDetails.phone_number || ''}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="email_address" className="block text-sm font-medium text-white mb-1">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          id="email_address"
+                          name="email_address"
+                          value={projectDetails.email_address || ''}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="website_name" className="block text-sm font-medium text-white mb-1">
+                          Website
+                        </label>
+                        <input
+                          type="text"
+                          id="website_name"
+                          name="website_name"
+                          value={projectDetails.website_name || ''}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="name_brokerfirm" className="block text-sm font-medium text-white mb-1">
+                          Broker Firm Name
+                        </label>
+                        <input
+                          type="text"
+                          id="name_brokerfirm"
+                          name="name_brokerfirm"
+                          value={projectDetails.name_brokerfirm || ''}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="address_brokerfirm" className="block text-sm font-medium text-white mb-1">
+                          Broker Firm Address
+                        </label>
+                        <input
+                          type="text"
+                          id="address_brokerfirm"
+                          name="address_brokerfirm"
+                          value={projectDetails.address_brokerfirm || ''}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
                     </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label htmlFor="layoutdescription" className="block text-sm font-medium text-white">
+                  )}
+
+                  {activeTab === 'descriptions' && (
+                    <div className="space-y-6">
+                      <div>
+                        <label htmlFor="shortdescription" className="block text-sm font-medium text-white mb-1">
+                          Short Description
+                        </label>
+                        <textarea
+                          id="shortdescription"
+                          name="shortdescription"
+                          value={projectDetails.shortdescription || ''}
+                          onChange={handleInputChange}
+                          rows={3}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Brief description of the property"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="descriptionlarge" className="block text-sm font-medium text-white mb-1">
                           Layout Description
                         </label>
-                        <button
-                          onClick={handleGenerateLayout}
-                          disabled={isGeneratingLayout}
-                          className="group relative inline-flex items-center overflow-hidden rounded-md bg-gradient-to-r from-blue-600 to-indigo-700 px-3 py-1 text-xs font-medium text-white transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg focus:outline-none disabled:opacity-70"
-                        >
-                          {isGeneratingLayout ? (
-                            <>
-                              <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Generating...
-                            </>
-                          ) : (
-                            <>Generate with AI</>
-                          )}
-                        </button>
-                      </div>
-                      <motion.div
-                        initial={{ opacity: 0.8 }}
-                        animate={{
-                          opacity: isGeneratingLayout ? [0.5, 1, 0.5] : 1,
-                          transition: {
-                            duration: 2,
-                            repeat: isGeneratingLayout ? Infinity : 0
-                          }
-                        }}
-                      >
                         <textarea
-                          id="layoutdescription"
-                          name="layoutdescription"
-                          value={projectDetails.layoutdescription || ''}
+                          id="descriptionlarge"
+                          name="descriptionlarge"
+                          value={projectDetails.descriptionlarge || ''}
                           onChange={handleInputChange}
                           rows={4}
-                          className={`w-full bg-[#111b33] border ${isGeneratingLayout ? 'border-blue-500/50' : 'border-[#1c2a47]'} rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300`}
-                          placeholder="Describe the layout of your property or use AI to generate a description"
-                          disabled={isGeneratingLayout}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Detailed layout description of the property"
                         />
-                      </motion.div>
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="descriptionextralarge" className="block text-sm font-medium text-white mb-1">
+                          Detailed Description
+                        </label>
+                        <textarea
+                          id="descriptionextralarge"
+                          name="descriptionextralarge"
+                          value={projectDetails.descriptionextralarge || ''}
+                          onChange={handleInputChange}
+                          rows={6}
+                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Comprehensive property description"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {activeTab === 'images' && (
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-medium text-white mb-4">Uploaded Images</h3>
-                    
-                    <ImageUploader
-                      images={uploadedImages}
-                      onUpload={handleImageUpload}
-                      onReplace={handleImageReplace}
-                      uploading={uploading}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-between p-6 border-t border-[#1c2a47]">
-                <button
-                  onClick={() => {
-                    if (activeTab === 'property-details') setActiveTab('basic-info');
-                    else if (activeTab === 'amenities') setActiveTab('property-details');
-                    else if (activeTab === 'images') setActiveTab('amenities');
-                  }}
-                  disabled={activeTab === 'basic-info'}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    activeTab === 'basic-info'
-                      ? 'bg-gray-600 cursor-not-allowed'
-                      : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                >
-                  Previous
-                </button>
-                
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleSave}
-                  disabled={updating}
-                  className="group relative inline-flex items-center overflow-hidden rounded-md bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-2 transition-all duration-300 ease-out hover:shadow-lg focus:outline-none disabled:opacity-70"
-                >
-                  {updating ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Saving...
-                    </>
-                  ) : (
-                    <>Save Changes</>
                   )}
-                </motion.button>
-                
-                <button
-                  onClick={() => {
-                    if (activeTab === 'basic-info') setActiveTab('property-details');
-                    else if (activeTab === 'property-details') setActiveTab('amenities');
-                    else if (activeTab === 'amenities') setActiveTab('images');
-                  }}
-                  disabled={activeTab === 'images'}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    activeTab === 'images'
-                      ? 'bg-gray-600 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                >
-                  Next
-                </button>
+
+                  {activeTab === 'images' && (
+                    <div className="space-y-6">
+                      <h3 className="text-lg font-medium text-white mb-4">Property Images</h3>
+                      
+                      <ImageUploader
+                        images={uploadedImages}
+                        onUpload={handleImageUpload}
+                        onReplace={handleImageReplace}
+                        uploading={uploading}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between p-6 border-t border-[#1c2a47]">
+                  <button
+                    onClick={() => {
+                      if (activeTab === 'descriptions') setActiveTab('basic-info');
+                      else if (activeTab === 'images') setActiveTab('descriptions');
+                    }}
+                    disabled={activeTab === 'basic-info'}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${
+                      activeTab === 'basic-info'
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    Previous
+                  </button>
+                  
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSave}
+                    disabled={updating}
+                    className="group relative inline-flex items-center overflow-hidden rounded-md bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-2 transition-all duration-300 ease-out hover:shadow-lg focus:outline-none disabled:opacity-70"
+                  >
+                    {updating ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </>
+                    ) : (
+                      <>Save Changes</>
+                    )}
+                  </motion.button>
+                  
+                  <button
+                    onClick={() => {
+                      if (activeTab === 'basic-info') setActiveTab('descriptions');
+                      else if (activeTab === 'descriptions') setActiveTab('images');
+                    }}
+                    disabled={activeTab === 'images'}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${
+                      activeTab === 'images'
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div className="lg:col-span-5">
-            <div className="bg-[#111827] rounded-lg overflow-hidden border border-[#1c2a47] sticky top-8 h-full">
+          )}
+          
+          <div className={`${project.presentation_id ? 'lg:col-span-12' : 'lg:col-span-5'} transition-all duration-300`}>
+            <div className={`bg-[#111827] rounded-lg overflow-hidden border border-[#1c2a47] sticky top-8 ${project.presentation_id ? 'min-h-[800px]' : 'h-full'}`}>
               <DocumentViewer
                 projectId={params.id as string}
                 placeholders={placeholders}
                 images={uploadedImages}
                 shouldProcess={shouldProcessDocument}
                 onImagesUpdate={(newImages) => setUploadedImages(newImages)}
+                onPresentationGenerated={handlePresentationGenerated}
               />
             </div>
           </div>
