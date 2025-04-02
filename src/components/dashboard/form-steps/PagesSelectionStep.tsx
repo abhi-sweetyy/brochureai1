@@ -19,7 +19,7 @@ export const availablePages: PageOption[] = [
     id: 'buildingLayout', 
     label: 'Building Layout Plan', 
     requiredImages: 1,
-    placeholderKeys: ['{{image3}}']
+    placeholderKeys: ['{{image2}}']
   },
   { 
     id: 'description', 
@@ -30,25 +30,25 @@ export const availablePages: PageOption[] = [
     id: 'exteriorPhotos', 
     label: 'Exterior Photos', 
     requiredImages: 2,
-    placeholderKeys: ['{{image1}}', '{{image2}}']
+    placeholderKeys: ['{{image3}}', '{{image4}}']
   },
   { 
     id: 'interiorPhotos', 
     label: 'Interior Photos', 
     requiredImages: 2,
-    placeholderKeys: ['{{image1}}', '{{image2}}']
+    placeholderKeys: ['{{image5}}', '{{image6}}']
   },
   { 
     id: 'floorPlan', 
     label: 'Floor Plan', 
     requiredImages: 1,
-    placeholderKeys: ['{{image3}}']
+    placeholderKeys: ['{{image7}}']
   },
   { 
     id: 'energyCertificate', 
     label: 'Excerpt from energy certificate', 
-    requiredImages: 1,
-    placeholderKeys: ['{{image3}}']
+    requiredImages: 2,
+    placeholderKeys: ['{{image8}}', '{{image9}}']
   },
   { 
     id: 'termsConditions', 

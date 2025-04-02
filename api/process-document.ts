@@ -1,7 +1,35 @@
 import { google } from 'googleapis';
 import { NextApiRequest, NextApiResponse } from 'next';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+interface RequestBody {
+  templateId: string;
+  placeholders: Record<string, string>;
+  images: Record<string, string>;
+  selectedPages?: Record<string, boolean>;
+}
+
+interface SlideRequest {
+  deleteSlide?: {
+    objectId: string;
+  };
+  replaceAllText?: {
+    containsText: {
+      text: string;
+      matchCase: boolean;
+    };
+    replaceText: string;
+  };
+  replaceImage?: {
+    imageObjectId: string;
+    imageReplaceMethod: string;
+    url: string;
+  };
+}
+
+export default async function handler(
+  req: NextApiRequest & { body: RequestBody },
+  res: NextApiResponse
+) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -33,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('Failed to create presentation');
     }
 
-    // Set the permissions to allow anyone to edit without requiring sign-in
+    // Set permissions for the new presentation
     await drive.permissions.create({
       fileId: createdDoc.data.id,
       requestBody: {
@@ -45,39 +73,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fields: 'id',
     });
 
-    // Make sure the document is published to the web and publicly accessible
-    await drive.revisions.update({
-      fileId: createdDoc.data.id,
-      revisionId: '1',
-      requestBody: {
-        published: true,
-        publishAuto: true,
-        publishedOutsideDomain: true,
-        publishedLink: 'ANYONE_WITH_LINK',
-      },
-    });
-
-    // Additional settings to ensure the presentation is editable
-    await drive.files.update({
-      fileId: createdDoc.data.id,
-      requestBody: {
-        copyRequiresWriterPermission: false,
-        writersCanShare: true,
-      },
-      supportsAllDrives: true,
-    });
-
-    // Before replacing text, let's fetch the presentation to find text to replace
+    // Before replacing text, fetch the presentation to find text to replace and handle slides
     const presentation = await slides.presentations.get({
       presentationId: createdDoc.data.id
     });
 
-    const requests = [];
+    const requests: SlideRequest[] = [];
+
+    // Define page indices in the template (0-based index)
+    const pageIndices = {
+      projectOverview: 1,      // Slide 2
+      buildingLayout: 2,       // Slide 3
+      description: 3,          // Slide 4
+      exteriorPhotos: 4,       // Slide 5
+      interiorPhotos: 5,       // Slide 6
+      floorPlan: 6,           // Slide 7
+      energyCertificate: 7,    // Slide 8
+      termsConditions: 8       // Slide 9
+    } as const;
+
+    // Collect slides to delete (in reverse order to maintain correct indices)
+    const slidesToDelete: number[] = [];
+    if (req.body.selectedPages) {
+      Object.entries(pageIndices).forEach(([pageId, index]) => {
+        if (!req.body.selectedPages[pageId]) {
+          slidesToDelete.unshift(index);
+        }
+      });
+    }
+
+    // Add delete requests for unselected pages
+    if (slidesToDelete.length > 0 && presentation.data.slides) {
+      slidesToDelete.forEach(slideIndex => {
+        const slide = presentation.data.slides?.[slideIndex];
+        if (slide?.objectId) {
+          requests.push({
+            deleteSlide: {
+              objectId: slide.objectId
+            }
+          });
+        }
+      });
+    }
 
     // Process both images and text replacements
     // First, handle text replacements
     if (req.body.placeholders) {
-      // Create a list of all placeholders we need to check
       const allPlaceholders = [
         'phone_number',
         'email_address',
@@ -91,14 +132,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'descriptionlarge',
         'descriptionextralarge',
         'address_brokerfirm',
-      ];
+      ] as const;
 
-      // For each placeholder, create a text replacement request
       allPlaceholders.forEach(placeholder => {
         const placeholderValue = req.body.placeholders[placeholder] || '';
-        
-        // Add a replacement request with the actual placeholder text format
-        // This is the format in the slide: {placeholder_name}
         requests.push({
           replaceAllText: {
             containsText: {
@@ -112,30 +149,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Handle image replacements if provided
-    if (req.body.images) {
-      // Get all slides and elements to find image placeholders
-      const slides = presentation.data.slides || [];
-      
-      slides.forEach(slide => {
+    if (req.body.images && presentation.data.slides) {
+      presentation.data.slides.forEach(slide => {
         const pageElements = slide.pageElements || [];
         
         pageElements.forEach(element => {
-          if (element.shape && element.shape.placeholder && element.shape.placeholder.type === 'PICTURE') {
-            // Check if we have a matching image for this placeholder
+          if (element.shape?.placeholder?.type === 'PICTURE' && 
+              element.shape.placeholder.index !== null && 
+              element.shape.placeholder.index !== undefined) {
             const placeholderIndex = element.shape.placeholder.index;
             const imageKey = Object.keys(req.body.images).find(key => 
               key === `image${placeholderIndex}` || key === `logo` || key === `image${placeholderIndex + 1}`
             );
             
-            if (imageKey && element.objectId) {
-              const imageUrl = req.body.images[imageKey];
-              
-              // Add an image replacement request
+            if (imageKey && element.objectId && req.body.images[imageKey]) {
               requests.push({
                 replaceImage: {
                   imageObjectId: element.objectId,
                   imageReplaceMethod: 'CENTER_INSIDE',
-                  url: imageUrl
+                  url: req.body.images[imageKey]
                 }
               });
             }
@@ -144,7 +176,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // If we have any requests, execute them
+    // Execute all requests (text replacements, image replacements, and slide deletions)
     if (requests.length > 0) {
       await slides.presentations.batchUpdate({
         presentationId: createdDoc.data.id,
@@ -161,6 +193,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Error processing document:', error);
-    return res.status(500).json({ message: 'Error processing document', error: error.message });
+    return res.status(500).json({ 
+      message: 'Error processing document', 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
 } 

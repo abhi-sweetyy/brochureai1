@@ -6,81 +6,97 @@ import { availablePages, PageOption } from './PagesSelectionStep';
 
 interface ImagePlaceholders {
   '{{logo}}': string;
-  '{{image1}}': string; // Project Photo 1
-  '{{image2}}': string; // Project Photo 2
-  '{{image3}}': string; // Project Layout
-  '{{image4}}': string; // Agent Photo
+  '{{agent}}': string;
+  '{{image1}}': string;
+  '{{image2}}': string;
+  '{{image3}}': string;
+  '{{image4}}': string;
+  '{{image5}}': string;
+  '{{image6}}': string;
+  '{{image7}}': string;
+  '{{image8}}': string;
+  '{{image9}}': string;
 }
 
 interface ImagesStepProps {
   uploadedImages: ImagePlaceholders;
-  logoUrl: string;
-  setUploadedImages: React.Dispatch<React.SetStateAction<ImagePlaceholders>>;
-  setLogoUrl: (url: string) => void;
-  selectedPages: Record<string, boolean>;
+  logoUrl?: string;
+  setUploadedImages: (images: ImagePlaceholders) => void;
+  setLogoUrl?: (url: string) => void;
+  selectedPages?: Record<string, boolean>;
 }
 
-const ImagesStep: React.FC<ImagesStepProps> = ({ 
-  uploadedImages, 
-  logoUrl, 
-  setUploadedImages, 
+export function ImagesStep({
+  uploadedImages,
+  logoUrl,
+  setUploadedImages,
   setLogoUrl,
-  selectedPages
-}) => {
-  // Create completely separate state for each image
+  selectedPages = {}
+}: ImagesStepProps) {
   const [logo, setLogo] = useState<string>(logoUrl || '');
+  const [agent, setAgent] = useState<string>(uploadedImages['{{agent}}'] || '');
   const [image1, setImage1] = useState<string>(uploadedImages['{{image1}}'] || '');
   const [image2, setImage2] = useState<string>(uploadedImages['{{image2}}'] || '');
   const [image3, setImage3] = useState<string>(uploadedImages['{{image3}}'] || '');
   const [image4, setImage4] = useState<string>(uploadedImages['{{image4}}'] || '');
+  const [image5, setImage5] = useState<string>(uploadedImages['{{image5}}'] || '');
+  const [image6, setImage6] = useState<string>(uploadedImages['{{image6}}'] || '');
+  const [image7, setImage7] = useState<string>(uploadedImages['{{image7}}'] || '');
+  const [image8, setImage8] = useState<string>(uploadedImages['{{image8}}'] || '');
+  const [image9, setImage9] = useState<string>(uploadedImages['{{image9}}'] || '');
 
-  // Sync with props when they change
   useEffect(() => {
     setLogo(logoUrl || '');
+    setAgent(uploadedImages['{{agent}}'] || '');
     setImage1(uploadedImages['{{image1}}'] || '');
     setImage2(uploadedImages['{{image2}}'] || '');
     setImage3(uploadedImages['{{image3}}'] || '');
     setImage4(uploadedImages['{{image4}}'] || '');
-  }, [logoUrl, uploadedImages]);
+    setImage5(uploadedImages['{{image5}}'] || '');
+    setImage6(uploadedImages['{{image6}}'] || '');
+    setImage7(uploadedImages['{{image7}}'] || '');
+    setImage8(uploadedImages['{{image8}}'] || '');
+    setImage9(uploadedImages['{{image9}}'] || '');
+  }, [uploadedImages, logoUrl]);
 
-  // Get required image placeholders based on selected pages
   const getRequiredImagePlaceholders = () => {
-    const requiredPlaceholders = new Set<string>();
+    const required: string[] = ['{{logo}}', '{{agent}}'];
     
-    // Always include logo
-    requiredPlaceholders.add('{{logo}}');
+    if (selectedPages.projectOverview) {
+      required.push('{{image1}}');
+    }
+    if (selectedPages.buildingLayout) {
+      required.push('{{image2}}');
+    }
+    if (selectedPages.exteriorPhotos) {
+      required.push('{{image3}}', '{{image4}}');
+    }
+    if (selectedPages.interiorPhotos) {
+      required.push('{{image5}}', '{{image6}}');
+    }
+    if (selectedPages.floorPlan) {
+      required.push('{{image7}}');
+    }
+    if (selectedPages.energyCertificate) {
+      required.push('{{image8}}', '{{image9}}');
+    }
     
-    // Add placeholders from selected pages
-    availablePages.forEach(page => {
-      if (selectedPages[page.id] && page.placeholderKeys) {
-        page.placeholderKeys.forEach(key => requiredPlaceholders.add(key));
-      }
-    });
-    
-    return requiredPlaceholders;
+    return required;
   };
 
-  // Update parent component with all images as an object
-  const updateParent = () => {
-    const newImages: ImagePlaceholders = {
-      '{{logo}}': logo,
-      '{{image1}}': image1,
-      '{{image2}}': image2,
-      '{{image3}}': image3,
-      '{{image4}}': image4
-    };
-    setUploadedImages(newImages);
-  };
-
-  // Handle image updates
   const handleImageUpdate = (placeholder: keyof ImagePlaceholders, urls: string[]) => {
-    const url = urls.length > 0 ? urls[0] : '';
+    if (urls.length === 0) return;
+    
+    const url = urls[0];
     
     // Update local state
     switch (placeholder) {
       case '{{logo}}':
         setLogo(url);
-        setLogoUrl(url);
+        setLogoUrl?.(url);
+        break;
+      case '{{agent}}':
+        setAgent(url);
         break;
       case '{{image1}}':
         setImage1(url);
@@ -94,93 +110,202 @@ const ImagesStep: React.FC<ImagesStepProps> = ({
       case '{{image4}}':
         setImage4(url);
         break;
+      case '{{image5}}':
+        setImage5(url);
+        break;
+      case '{{image6}}':
+        setImage6(url);
+        break;
+      case '{{image7}}':
+        setImage7(url);
+        break;
+      case '{{image8}}':
+        setImage8(url);
+        break;
+      case '{{image9}}':
+        setImage9(url);
+        break;
     }
     
-    // Create a new object for the parent update
-    const newImages: ImagePlaceholders = {
-      '{{logo}}': placeholder === '{{logo}}' ? url : logo,
-      '{{image1}}': placeholder === '{{image1}}' ? url : image1,
-      '{{image2}}': placeholder === '{{image2}}' ? url : image2,
-      '{{image3}}': placeholder === '{{image3}}' ? url : image3,
-      '{{image4}}': placeholder === '{{image4}}' ? url : image4
-    };
-    
     // Update parent state
-    setUploadedImages(newImages);
+    setUploadedImages({
+      ...uploadedImages,
+      [placeholder]: url
+    });
   };
 
-  // Get image sections to display
   const getImageSections = () => {
-    const requiredPlaceholders = getRequiredImagePlaceholders();
     const sections: JSX.Element[] = [];
-
-    // Image section configurations
-    const imageConfigs = [
-      {
-        placeholder: '{{logo}}' as keyof ImagePlaceholders,
-        title: 'Logo',
-        description: 'Company or project logo'
-      },
-      {
-        placeholder: '{{image1}}' as keyof ImagePlaceholders,
-        title: 'Project Photo 1',
-        description: 'Main project photo'
-      },
-      {
-        placeholder: '{{image2}}' as keyof ImagePlaceholders,
-        title: 'Project Photo 2',
-        description: 'Secondary project photo'
-      },
-      {
-        placeholder: '{{image3}}' as keyof ImagePlaceholders,
-        title: 'Project Layout',
-        description: 'Floor plan or layout image'
-      },
-      {
-        placeholder: '{{image4}}' as keyof ImagePlaceholders,
-        title: 'Agent Photo',
-        description: 'Real estate agent photo'
-      }
-    ];
-
-    // Add sections for required placeholders
-    imageConfigs.forEach(config => {
-      if (requiredPlaceholders.has(config.placeholder)) {
-        sections.push(
-          <div key={config.placeholder}>
-            <h4 className="text-md font-medium text-white mb-2">{config.title}</h4>
-            <p className="text-sm text-gray-400 mb-2">
-              Placeholder: {config.placeholder}
-              <br />
-              <span className="text-xs">{config.description}</span>
-            </p>
-            <ImageUploader
-              onImagesUploaded={(urls) => handleImageUpdate(config.placeholder, urls)}
-              existingImages={uploadedImages[config.placeholder] ? [uploadedImages[config.placeholder]] : []}
-              limit={1}
-            />
+    const requiredPlaceholders = getRequiredImagePlaceholders();
+    
+    // Company Logo - Always shown
+    sections.push(
+      <div key="logo" className="mb-8">
+        <h3 className="text-lg font-semibold mb-2">Company Logo</h3>
+        <p className="text-gray-600 mb-4">Upload your company logo that will appear on all pages</p>
+        <ImageUploader
+          existingImages={logo ? [logo] : []}
+          onImagesUploaded={(urls: string[]) => handleImageUpdate('{{logo}}', urls)}
+          limit={1}
+        />
+      </div>
+    );
+    
+    // Agent Photo - Always shown
+    sections.push(
+      <div key="agent" className="mb-8">
+        <h3 className="text-lg font-semibold mb-2">Agent Photo</h3>
+        <p className="text-gray-600 mb-4">Upload a professional photo of the agent</p>
+        <ImageUploader
+          existingImages={agent ? [agent] : []}
+          onImagesUploaded={(urls: string[]) => handleImageUpdate('{{agent}}', urls)}
+          limit={1}
+        />
+      </div>
+    );
+    
+    // Project Overview Images
+    if (selectedPages.projectOverview) {
+      sections.push(
+        <div key="overview" className="mb-8">
+          <h3 className="text-lg font-semibold mb-2">Project Overview Image</h3>
+          <p className="text-gray-600 mb-4">Upload the main project image</p>
+          <ImageUploader
+            existingImages={image1 ? [image1] : []}
+            onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image1}}', urls)}
+            limit={1}
+          />
+        </div>
+      );
+    }
+    
+    // Building Layout Plan
+    if (selectedPages.buildingLayout) {
+      sections.push(
+        <div key="layout" className="mb-8">
+          <h3 className="text-lg font-semibold mb-2">Building Layout Plan</h3>
+          <p className="text-gray-600 mb-4">Upload the building layout plan</p>
+          <ImageUploader
+            existingImages={image2 ? [image2] : []}
+            onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image2}}', urls)}
+            limit={1}
+          />
+        </div>
+      );
+    }
+    
+    // Exterior Photos
+    if (selectedPages.exteriorPhotos) {
+      sections.push(
+        <div key="exterior" className="mb-8">
+          <h3 className="text-lg font-semibold mb-2">Exterior Photos</h3>
+          <p className="text-gray-600 mb-4">Upload exterior photos of the property (max 2)</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Exterior Photo 1</p>
+              <ImageUploader
+                existingImages={image3 ? [image3] : []}
+                onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image3}}', urls)}
+                limit={1}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Exterior Photo 2</p>
+              <ImageUploader
+                existingImages={image4 ? [image4] : []}
+                onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image4}}', urls)}
+                limit={1}
+              />
+            </div>
           </div>
-        );
-      }
-    });
-
+        </div>
+      );
+    }
+    
+    // Interior Photos
+    if (selectedPages.interiorPhotos) {
+      sections.push(
+        <div key="interior" className="mb-8">
+          <h3 className="text-lg font-semibold mb-2">Interior Photos</h3>
+          <p className="text-gray-600 mb-4">Upload interior photos of the property (max 2)</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Interior Photo 1</p>
+              <ImageUploader
+                existingImages={image5 ? [image5] : []}
+                onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image5}}', urls)}
+                limit={1}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Interior Photo 2</p>
+              <ImageUploader
+                existingImages={image6 ? [image6] : []}
+                onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image6}}', urls)}
+                limit={1}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Floor Plan
+    if (selectedPages.floorPlan) {
+      sections.push(
+        <div key="floorplan" className="mb-8">
+          <h3 className="text-lg font-semibold mb-2">Floor Plan</h3>
+          <p className="text-gray-600 mb-4">Upload the floor plan image</p>
+          <ImageUploader
+            existingImages={image7 ? [image7] : []}
+            onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image7}}', urls)}
+            limit={1}
+          />
+        </div>
+      );
+    }
+    
+    // Energy Certificate
+    if (selectedPages.energyCertificate) {
+      sections.push(
+        <div key="energy" className="mb-8">
+          <h3 className="text-lg font-semibold mb-2">Energy Certificate</h3>
+          <p className="text-gray-600 mb-4">Upload the energy certificate images (max 2)</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Energy Certificate Page 1</p>
+              <ImageUploader
+                existingImages={image8 ? [image8] : []}
+                onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image8}}', urls)}
+                limit={1}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Energy Certificate Page 2</p>
+              <ImageUploader
+                existingImages={image9 ? [image9] : []}
+                onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image9}}', urls)}
+                limit={1}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     return sections;
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-white mb-4">Upload Property Images</h3>
-        <p className="text-[#8491A5] mb-6">
-          Add high-quality images for your selected pages. Only the image upload fields for your selected pages will be shown.
+    <div className="space-y-8">
+      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+        <p className="text-blue-400">
+          Upload images for your selected pages. The system will automatically organize them in your brochure.
         </p>
-        
-        <div className="space-y-8">
-          {getImageSections()}
-        </div>
       </div>
+      {getImageSections()}
     </div>
   );
-};
+}
 
 export default ImagesStep; 

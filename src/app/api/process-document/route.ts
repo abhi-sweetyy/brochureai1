@@ -49,6 +49,18 @@ const allPlaceholders = [
   'address_brokerfirm'
 ];
 
+// Define slide mappings based on the ACTUAL slide analysis from the logs
+const pageToSlideMapping: Record<string, number[]> = {
+  'projectOverview': [0],     // Slide #1 - Title page with date, price, etc.
+  'buildingLayout': [1],      // Slide #2 - Lageplan (location plan) page
+  'description': [2],         // Slide #3 - Description page with descriptionextralarge
+  'exteriorPhotos': [3],      // Slide #4 - Exterior photos page
+  'interiorPhotos': [4],      // Slide #5 - Interior photos page
+  'floorPlan': [5],           // Slide #6 - Floor plan page (Grundriss)
+  'energyCertificate': [6],   // Slide #7 - Energy certificate page (Energieausweis)
+  'termsConditions': [7]      // Slide #8 - Terms and conditions page
+};
+
 export async function POST(request: Request) {
   try {
     console.log("Process presentation API called");
@@ -71,7 +83,7 @@ export async function POST(request: Request) {
       );
     }
     
-    const { templateId, placeholders, images } = body;
+    const { templateId, placeholders, images, selectedPages } = body;
     
     if (!templateId) {
       return NextResponse.json(
@@ -130,8 +142,7 @@ export async function POST(request: Request) {
     
     console.log("Presentation content retrieved");
     
-    // Replace text placeholders in the new presentation
-    // Create an array of replacement requests
+    // Create an array of requests for text replacements and slide deletions
     const requests = [];
     
     // Ensure all expected placeholders have values (use empty string if not provided)
@@ -185,14 +196,15 @@ export async function POST(request: Request) {
       const imageElements: any[] = [];
       
       // Iterate through all slides
-      presentation.data.slides?.forEach(slide => {
+      presentation.data.slides?.forEach((slide, slideIndex) => {
         // Iterate through all page elements on the slide
         slide.pageElements?.forEach(element => {
           // Check if this is an image element
           if (element.image && element.objectId) {
             imageElements.push({
               objectId: element.objectId,
-              title: element.title || ''
+              title: element.title || '',
+              slideIndex
             });
           }
         });
@@ -229,11 +241,87 @@ export async function POST(request: Request) {
       });
     }
     
+    // Handle slide deletion for unchecked pages
+    if (selectedPages && typeof selectedPages === 'object') {
+      console.log("Processing selectedPages to remove unchecked slides:", selectedPages);
+      
+      // Collect all slide IDs to delete (for unchecked pages)
+      const slideIdsToDelete: string[] = [];
+      
+      if (presentation.data.slides) {
+        // Get total number of slides for debugging
+        console.log(`Template has ${presentation.data.slides.length} slides total`);
+        
+        // Enhanced slide analysis to better understand content
+        console.log("========= DETAILED SLIDE ANALYSIS =========");
+        presentation.data.slides.forEach((slide, index) => {
+          // Extract all text from this slide
+          let slideText = '';
+          let imgCount = 0;
+          
+          slide.pageElements?.forEach(element => {
+            // Extract text from shapes
+            if (element.shape?.text) {
+              const elementText = element.shape.text.textElements
+                ?.map(textElement => textElement.textRun?.content || '')
+                .join('');
+              slideText += elementText + ' ';
+            }
+            
+            // Count images
+            if (element.image) {
+              imgCount++;
+            }
+          });
+          
+          // Clean up and truncate text for logging
+          slideText = slideText.replace(/\s+/g, ' ').trim();
+          const truncatedText = slideText.length > 100 ? slideText.substring(0, 100) + '...' : slideText;
+          
+          console.log(`Slide #${index + 1} (index ${index}) - ID: ${slide.objectId} - ${imgCount} images - Text: "${truncatedText}"`);
+        });
+        console.log("==========================================");
+        
+        // Process each page in our mapping to see if it should be removed
+        Object.entries(pageToSlideMapping).forEach(([pageId, slideIndices]) => {
+          const isPageSelected = selectedPages[pageId] === true;
+          console.log(`Page "${pageId}" - Selected: ${isPageSelected}, Mapped to slides:`, slideIndices);
+          
+          // If this page is NOT selected, queue its slides for deletion
+          if (!isPageSelected) {
+            slideIndices.forEach(slideIndex => {
+              // Verify the slide index is valid
+              if (slideIndex >= 0 && slideIndex < presentation.data.slides!.length) {
+                const slideId = presentation.data.slides![slideIndex].objectId;
+                if (slideId) {
+                  slideIdsToDelete.push(slideId);
+                  console.log(`WILL DELETE: Slide #${slideIndex + 1} (index ${slideIndex}) for unchecked page "${pageId}" - ID: ${slideId}`);
+                }
+              } else {
+                console.log(`WARNING: Invalid slide index ${slideIndex} for page "${pageId}"`);
+              }
+            });
+          }
+        });
+        
+        // Add delete requests for each slide to be removed
+        slideIdsToDelete.forEach(slideId => {
+          requests.push({
+            deleteObject: {
+              objectId: slideId
+            }
+          });
+        });
+        
+        console.log(`Added ${slideIdsToDelete.length} slide deletion requests for slides:`, slideIdsToDelete);
+      }
+    }
+    
     console.log(`Created ${requests.length} update requests`);
     
-    // Inspect the presentation content (Update logging to look for the correct format)
+    // Inspect the presentation content
     console.log("Inspecting presentation for text elements containing '{descriptionlarge}'");
-    let foundPlaceholders = [];
+    let foundPlaceholders: { slideIndex: number; text: string }[] = [];
     presentation.data.slides?.forEach((slide, slideIndex) => {
       slide.pageElements?.forEach(element => {
         if (element.shape && element.shape.text) {

@@ -31,6 +31,7 @@ interface Project {
     descriptionextralarge?: string;
     address_brokerfirm?: string;
     amenities?: string[];
+    selected_pages?: Record<string, boolean>;
   };
   presentation_id?: string;
   last_updated?: string;
@@ -109,7 +110,8 @@ export default function ProjectEditor() {
           descriptionlarge: existingDetails.descriptionlarge || existingDetails.layoutdescription || '',
           descriptionextralarge: existingDetails.descriptionextralarge || existingDetails.summary || '',
           address_brokerfirm: existingDetails.address_brokerfirm || projectData.address || '',
-          amenities: existingDetails.amenities || []
+          amenities: existingDetails.amenities || [],
+          selected_pages: existingDetails.selected_pages || {}
         };
         
         // Create a focused project object with only what we need
@@ -261,6 +263,7 @@ export default function ProjectEditor() {
         descriptionlarge: projectDetails.descriptionlarge,
         descriptionextralarge: projectDetails.descriptionextralarge,
         address_brokerfirm: projectDetails.address_brokerfirm,
+        selected_pages: currentProject?.project_details?.selected_pages || {} // Preserve selected pages
       };
       
       const updatePayload = {
@@ -408,7 +411,7 @@ export default function ProjectEditor() {
         throw new Error(`Failed to update project: ${updateError.message}`);
       }
       
-      // Update the state
+      // Update the state safely
       setUploadedImages(newImages);
       toast.success('Image replaced successfully');
       
@@ -794,6 +797,7 @@ export default function ProjectEditor() {
                 shouldProcess={shouldProcessDocument}
                 onImagesUpdate={(newImages) => setUploadedImages(newImages)}
                 onPresentationGenerated={handlePresentationGenerated}
+                selectedPages={projectDetails.selected_pages}
               />
             </div>
           </div>

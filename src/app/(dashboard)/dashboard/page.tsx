@@ -54,10 +54,16 @@ type UploadStage = 'idle' | 'uploading' | 'complete' | 'error';
 
 interface ImagePlaceholders {
   '{{logo}}': string;
-  '{{image3}}': string; // Project Layout
-  '{{image1}}': string; // Project Photo 1
-  '{{image2}}': string; // Project Photo 2
-  '{{image4}}': string; // Agent Photo
+  '{{agent}}': string;
+  '{{image1}}': string;
+  '{{image2}}': string;
+  '{{image3}}': string;
+  '{{image4}}': string;
+  '{{image5}}': string;
+  '{{image6}}': string;
+  '{{image7}}': string;
+  '{{image8}}': string;
+  '{{image9}}': string;
 }
 
 interface PropertyPlaceholders {
@@ -90,10 +96,16 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<ImagePlaceholders>({
     '{{logo}}': '',
+    '{{agent}}': '',
     '{{image1}}': '',
     '{{image2}}': '',
     '{{image3}}': '',
-    '{{image4}}': ''
+    '{{image4}}': '',
+    '{{image5}}': '',
+    '{{image6}}': '',
+    '{{image7}}': '',
+    '{{image8}}': '',
+    '{{image9}}': ''
   });
   const [logoUrl, setLogoUrl] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -439,15 +451,38 @@ const Dashboard = () => {
         presentationImages.push(logoUrl);
       }
       
-      // Add other images in order
-      const imageKeys = ['{{image3}}', '{{image1}}', '{{image2}}', '{{image4}}'];
-      for (const key of imageKeys) {
-        if (uploadedImages[key as keyof ImagePlaceholders]) {
-          presentationImages.push(uploadedImages[key as keyof ImagePlaceholders]);
-        }
+      // Add agent photo if it exists
+      if (uploadedImages['{{agent}}']) {
+        presentationImages.push(uploadedImages['{{agent}}']);
       }
       
+      // Define types for the image mapping
+      type PageId = 'projectOverview' | 'buildingLayout' | 'exteriorPhotos' | 'interiorPhotos' | 'floorPlan' | 'energyCertificate';
+      type ImagePlaceholderKey = keyof ImagePlaceholders;
+      
+      // Filter and add images based on selected pages
+      const imageMapping: Record<PageId, ImagePlaceholderKey[]> = {
+        'projectOverview': ['{{image1}}'],
+        'buildingLayout': ['{{image2}}'],
+        'exteriorPhotos': ['{{image3}}', '{{image4}}'],
+        'interiorPhotos': ['{{image5}}', '{{image6}}'],
+        'floorPlan': ['{{image7}}'],
+        'energyCertificate': ['{{image8}}', '{{image9}}']
+      };
+
+      // Add images only for selected pages
+      (Object.entries(selectedPages) as [PageId, boolean][]).forEach(([pageId, isSelected]) => {
+        if (isSelected && imageMapping[pageId]) {
+          imageMapping[pageId].forEach(placeholder => {
+            if (uploadedImages[placeholder]) {
+              presentationImages.push(uploadedImages[placeholder]);
+            }
+          });
+        }
+      });
+      
       console.log('Creating project with images:', presentationImages);
+      console.log('Selected pages:', selectedPages);
       
       // Get user ID directly from session
       const userId = session.user.id;
@@ -463,7 +498,11 @@ const Dashboard = () => {
           project_details: {
             ...placeholders,
             raw_property_data: rawPropertyData,
-            selected_pages: selectedPages
+            selected_pages: selectedPages,
+            page_configuration: {
+              selectedPages,
+              imageMapping
+            }
           },
           presentation_images: presentationImages,
         })
@@ -480,10 +519,13 @@ const Dashboard = () => {
       console.log('Project created successfully:', newProject);
       setUploadStage('complete');
       
-      // Redirect to the project page
-      if (newProject) {
-        router.push(`/project/${newProject.id}`);
-      }
+      // Use requestAnimationFrame to ensure state updates are complete before navigation
+      requestAnimationFrame(() => {
+        if (newProject) {
+          // Use replace instead of push to prevent back navigation issues
+          router.replace(`/project/${newProject.id}`);
+        }
+      });
       
     } catch (error: any) {
       console.error('Error in form submission:', error);

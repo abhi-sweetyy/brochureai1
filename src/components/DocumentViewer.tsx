@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { toast } from 'react-hot-toast';
 
 interface DocumentViewerProps {
   placeholders: Record<string, string>;
@@ -11,6 +12,7 @@ interface DocumentViewerProps {
   shouldProcess: boolean;
   onImagesUpdate?: (newImages: string[]) => void;
   onPresentationGenerated?: () => void;
+  selectedPages?: Record<string, boolean>;
 }
 
 export default function DocumentViewer({
@@ -19,7 +21,8 @@ export default function DocumentViewer({
   projectId,
   shouldProcess,
   onImagesUpdate,
-  onPresentationGenerated
+  onPresentationGenerated,
+  selectedPages
 }: DocumentViewerProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,27 +89,81 @@ export default function DocumentViewer({
         // Create a properly structured image map for the API
         const imageMap: Record<string, string> = {};
         
+        // Always include logo and agent photo
         if (images.length > 0) {
           imageMap['logo'] = images[0]; 
+          console.log('Added logo image:', images[0].substring(0, 50) + '...');
         }
         
         if (images.length > 1) {
-          imageMap['image3'] = images[1]; 
+          imageMap['agent'] = images[1]; 
+          console.log('Added agent image:', images[1].substring(0, 50) + '...');
         }
         
-        if (images.length > 2) {
-          imageMap['image1'] = images[2]; 
+        // Create a direct mapping with explicit image names
+        // This ensures each image gets the correct placeholder name
+        let imageIndex = 2; // Start at index 2 (after logo and agent)
+        
+        // Map images based on selected pages
+        if (selectedPages) {
+          console.log('Mapping images based on selected pages:', selectedPages);
+          
+          // Project Overview (first content slide)
+          if (selectedPages['projectOverview'] && imageIndex < images.length) {
+            imageMap['image1'] = images[imageIndex++];
+            console.log('Added Project Overview image (image1)');
+          }
+          
+          // Building Layout Plan
+          if (selectedPages['buildingLayout'] && imageIndex < images.length) {
+            imageMap['image2'] = images[imageIndex++];
+            console.log('Added Building Layout image (image2)');
+          }
+          
+          // Exterior Photos (2 images)
+          if (selectedPages['exteriorPhotos']) {
+            if (imageIndex < images.length) {
+              imageMap['image3'] = images[imageIndex++];
+              console.log('Added Exterior Photo 1 (image3)');
+            }
+            if (imageIndex < images.length) {
+              imageMap['image4'] = images[imageIndex++];
+              console.log('Added Exterior Photo 2 (image4)');
+            }
+          }
+          
+          // Interior Photos (2 images)
+          if (selectedPages['interiorPhotos']) {
+            if (imageIndex < images.length) {
+              imageMap['image5'] = images[imageIndex++];
+              console.log('Added Interior Photo 1 (image5)');
+            }
+            if (imageIndex < images.length) {
+              imageMap['image6'] = images[imageIndex++];
+              console.log('Added Interior Photo 2 (image6)');
+            }
+          }
+          
+          // Floor Plan
+          if (selectedPages['floorPlan'] && imageIndex < images.length) {
+            imageMap['image7'] = images[imageIndex++];
+            console.log('Added Floor Plan image (image7)');
+          }
+          
+          // Energy Certificate (2 images)
+          if (selectedPages['energyCertificate']) {
+            if (imageIndex < images.length) {
+              imageMap['image8'] = images[imageIndex++];
+              console.log('Added Energy Certificate 1 (image8)');
+            }
+            if (imageIndex < images.length) {
+              imageMap['image9'] = images[imageIndex++];
+              console.log('Added Energy Certificate 2 (image9)');
+            }
+          }
         }
         
-        if (images.length > 3) {
-          imageMap['image2'] = images[3]; 
-        }
-        
-        if (images.length > 4) {
-          imageMap['image4'] = images[4]; 
-        }
-        
-        console.log("Corrected image map for API:", imageMap);
+        console.log("Image map for API:", imageMap);
         
         // Call your server-side API endpoint
         const response = await fetch('/api/process-document', {
@@ -117,7 +174,8 @@ export default function DocumentViewer({
           body: JSON.stringify({
             templateId: templateId,
             placeholders: placeholders,
-            images: imageMap // Corrected image map
+            images: imageMap,
+            selectedPages: selectedPages
           }),
         });
         
@@ -175,7 +233,54 @@ export default function DocumentViewer({
     };
 
     processDocument();
-  }, [shouldProcess, projectId, placeholders, images, processedDocumentId]);
+  }, [shouldProcess, projectId, placeholders, images, processedDocumentId, selectedPages]);
+
+  // Add a new effect to handle image updates based on selected pages
+  useEffect(() => {
+    if (!selectedPages || !onImagesUpdate) return;
+
+    // Create a new array with only the images for selected pages
+    const filteredImages = [...images];
+    let newLength = 2; // Keep logo and agent photo
+
+    // Project Overview
+    if (selectedPages['projectOverview']) {
+      newLength = 3;
+    }
+    
+    // Building Layout Plan
+    if (selectedPages['buildingLayout']) {
+      newLength = 4;
+    }
+    
+    // Exterior Photos
+    if (selectedPages['exteriorPhotos']) {
+      newLength = 6;
+    }
+    
+    // Interior Photos
+    if (selectedPages['interiorPhotos']) {
+      newLength = 8;
+    }
+    
+    // Floor Plan
+    if (selectedPages['floorPlan']) {
+      newLength = 9;
+    }
+    
+    // Energy Certificate
+    if (selectedPages['energyCertificate']) {
+      newLength = 11;
+    }
+
+    // Trim the array to only include images for selected pages
+    const updatedImages = filteredImages.slice(0, newLength);
+
+    // Update the parent component's state
+    if (JSON.stringify(updatedImages) !== JSON.stringify(images)) {
+      onImagesUpdate(updatedImages);
+    }
+  }, [selectedPages, images, onImagesUpdate]);
 
   // Download the document as PDF
   const downloadDocument = async () => {
@@ -250,31 +355,77 @@ export default function DocumentViewer({
       setLoading(true);
       setError(null);
       
-      // Create the same corrected image map
+      // Create a properly structured image map for the API - use the SAME logic as the automatic process
       const imageMap: Record<string, string> = {};
       
-      // Apply the same corrected mapping
+      // Always include logo and agent photo
       if (images.length > 0) {
-        imageMap['logo'] = images[0];
+        imageMap['logo'] = images[0]; 
+        console.log('Manual process - Added logo image:', images[0].substring(0, 50) + '...');
       }
       
       if (images.length > 1) {
-        imageMap['image3'] = images[1];
+        imageMap['agent'] = images[1]; 
+        console.log('Manual process - Added agent image:', images[1].substring(0, 50) + '...');
       }
       
-      if (images.length > 2) {
-        imageMap['image1'] = images[2];
+      // Create a direct mapping with explicit image names
+      // This ensures each image gets the correct placeholder name
+      let imageIndex = 2; // Start at index 2 (after logo and agent)
+      
+      // Use the exact same placeholder naming as the automatic process
+      // Project Overview
+      if (imageIndex < images.length) {
+        imageMap['image1'] = images[imageIndex++];
+        console.log('Manual process - Added Project Overview image (image1)');
       }
       
-      if (images.length > 3) {
-        imageMap['image2'] = images[3];
+      // Building Layout Plan
+      if (imageIndex < images.length) {
+        imageMap['image2'] = images[imageIndex++];
+        console.log('Manual process - Added Building Layout image (image2)');
       }
       
-      if (images.length > 4) {
-        imageMap['image4'] = images[4];
+      // Exterior Photos
+      if (imageIndex < images.length) {
+        imageMap['image3'] = images[imageIndex++];
+        console.log('Manual process - Added Exterior Photo 1 (image3)');
       }
       
-      console.log("Corrected image map for API (manual process):", imageMap);
+      if (imageIndex < images.length) {
+        imageMap['image4'] = images[imageIndex++];
+        console.log('Manual process - Added Exterior Photo 2 (image4)');
+      }
+      
+      // Interior Photos
+      if (imageIndex < images.length) {
+        imageMap['image5'] = images[imageIndex++];
+        console.log('Manual process - Added Interior Photo 1 (image5)');
+      }
+      
+      if (imageIndex < images.length) {
+        imageMap['image6'] = images[imageIndex++];
+        console.log('Manual process - Added Interior Photo 2 (image6)');
+      }
+      
+      // Floor Plan
+      if (imageIndex < images.length) {
+        imageMap['image7'] = images[imageIndex++];
+        console.log('Manual process - Added Floor Plan image (image7)');
+      }
+      
+      // Energy Certificate
+      if (imageIndex < images.length) {
+        imageMap['image8'] = images[imageIndex++];
+        console.log('Manual process - Added Energy Certificate 1 (image8)');
+      }
+      
+      if (imageIndex < images.length) {
+        imageMap['image9'] = images[imageIndex++];
+        console.log('Manual process - Added Energy Certificate 2 (image9)');
+      }
+      
+      console.log("Manual process - Image map for API:", imageMap);
       
       const response = await fetch('/api/process-document', {
         method: 'POST',
@@ -284,7 +435,8 @@ export default function DocumentViewer({
         body: JSON.stringify({
           templateId: templateId,
           placeholders: placeholders,
-          images: imageMap
+          images: imageMap,
+          selectedPages: selectedPages // Also send the selectedPages
         }),
       });
       
@@ -341,19 +493,113 @@ export default function DocumentViewer({
     return publicUrl;
   };
 
-  // Then update the handleImageUpload function
+  // Handle image upload
   const handleImageUpload = async (file: File) => {
     try {
       const newImageUrl = await uploadImage(file);
+      
+      // Create a new array with the new image
       const updatedImages = [...images, newImageUrl];
+      
+      // Update parent component state safely
       if (onImagesUpdate) {
-        onImagesUpdate(updatedImages);
+        // Use requestAnimationFrame to ensure state updates are complete
+        requestAnimationFrame(() => {
+          onImagesUpdate(updatedImages);
+        });
       }
+      
       return newImageUrl;
     } catch (error) {
       console.error('Image upload failed:', error);
       setError('Failed to upload image');
       throw error;
+    }
+  };
+
+  // Handle image replacement
+  const handleImageReplace = async (index: number, file: File) => {
+    try {
+      setLoading(true);
+      
+      // Get the old image URL
+      const oldImageUrl = images[index];
+      
+      // Upload the new file with a unique name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+      const filePath = `${projectId}/${fileName}`;
+      
+      // Upload the file to the correct bucket
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('docx')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (uploadError) {
+        throw new Error(`Failed to upload new image: ${uploadError.message}`);
+      }
+      
+      // Get the public URL from the correct bucket
+      const { data: publicUrlData } = supabase.storage
+        .from('docx')
+        .getPublicUrl(filePath);
+      
+      const newImageUrl = publicUrlData.publicUrl;
+      
+      // Create a new array with the replaced image
+      const newImages = [...images];
+      newImages[index] = newImageUrl;
+      
+      // Update the database directly
+      const { data: updateData, error: updateError } = await supabase
+        .from('real_estate_projects')
+        .update({ 
+          presentation_images: newImages,
+          last_updated: new Date().toISOString()
+        })
+        .eq('id', projectId)
+        .select();
+      
+      if (updateError) {
+        throw new Error(`Failed to update project: ${updateError.message}`);
+      }
+      
+      // Update the state safely
+      if (onImagesUpdate) {
+        requestAnimationFrame(() => {
+          onImagesUpdate(newImages);
+        });
+      }
+      
+      toast.success('Image replaced successfully');
+      
+      // Try to delete the old file if it exists
+      if (oldImageUrl) {
+        try {
+          // Extract the path from the URL
+          const urlParts = oldImageUrl.split('/');
+          const bucketNameIndex = urlParts.findIndex(part => part === 'docx');
+          
+          if (bucketNameIndex >= 0 && bucketNameIndex < urlParts.length - 1) {
+            const oldPath = urlParts.slice(bucketNameIndex + 1).join('/').split('?')[0];
+            
+            const { data: deleteData, error: deleteError } = await supabase.storage
+              .from('docx')
+              .remove([oldPath]);
+          }
+        } catch (deleteError) {
+          console.error('Error during file deletion:', deleteError);
+        }
+      }
+      
+    } catch (error: any) {
+      console.error('Image replacement failed:', error);
+      toast.error(error.message || 'Failed to replace image');
+    } finally {
+      setLoading(false);
     }
   };
 
