@@ -61,6 +61,9 @@ const pageToSlideMapping: Record<string, number[]> = {
   'termsConditions': [7]      // Slide #8 - Terms and conditions page
 };
 
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     console.log("Process presentation API called");

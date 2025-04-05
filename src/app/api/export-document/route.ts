@@ -22,6 +22,9 @@ try {
   console.error('Error parsing service account key:', error);
 }
 
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     if (!auth) {

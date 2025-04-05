@@ -1,3 +1,5 @@
+import Konva from 'konva';
+
 export function calculateDimensions(
   image: HTMLImageElement,
   maxWidth: number,

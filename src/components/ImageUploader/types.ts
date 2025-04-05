@@ -16,6 +16,13 @@ export interface ImageUploaderProps {
   limit?: number;
 }
 
+export interface EditorProps {
+  image: string;
+  index: number;
+  onSave: (file: File) => Promise<void>;
+  onClose: () => void;
+}
+
 export interface EditorState {
   brightness: number;
   contrast: number;

@@ -19,6 +19,9 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   const body = await request.text();
   const sig = headers().get('Stripe-Signature');

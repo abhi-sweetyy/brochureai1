@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
+
 // Create a JWT client using the service account credentials
 let auth: GoogleAuth | undefined;
 try {

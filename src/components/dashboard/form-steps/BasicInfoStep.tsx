@@ -141,7 +141,7 @@ Output just a JSON with these three fields. Use all available clues to identify 
       // Format the title
       let title = content.title || '';
       if (title) {
-        title = title.replace(/\b\w/g, l => l.toUpperCase());
+        title = title.replace(/\b\w/g, (l: string) => l.toUpperCase());
       }
       
       // Create synthetic change events to update the fields

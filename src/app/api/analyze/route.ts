@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { analyzeContract } from '@/lib/analyzeContract';
 
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
