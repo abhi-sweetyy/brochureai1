@@ -21,6 +21,7 @@ import { processPropertyDescription } from '@/utils/ai-helpers';
 import { extractTitle, extractPrice, extractSpace, extractYear } from '@/utils/extractors';
 import mammoth from 'mammoth';
 import { toast } from 'react-hot-toast';
+import { verifyApiConnection } from '@/utils/test-api';
 
 // Define the steps for the form
 const FORM_STEPS = [
@@ -153,10 +154,10 @@ const Dashboard = () => {
     shortdescription: '',
     price: '',
     date_available: '',
-    name_brokerfirm: 'Ihre Immobilienmakler GmbH',
+    name_brokerfirm: '',
     descriptionlarge: '',
     descriptionextralarge: '',
-    address_brokerfirm: 'Musterstraße 123, 12345 Berlin'
+    address_brokerfirm: ''
   });
 
   // Add new state for tracking auto-filled fields and raw property data
@@ -180,6 +181,55 @@ const Dashboard = () => {
       router.replace('/sign-in');
     }
   }, [session, isLoading, router]);
+
+  // Check API connectivity on initial load
+  useEffect(() => {
+    const checkApiConnection = async () => {
+      try {
+        const result = await verifyApiConnection();
+        
+        if (!result.success) {
+          // Show specific error messages based on the error type
+          let errorMessage = "API connection failed.";
+          
+          switch (result.error) {
+            case "API_KEY_MISSING":
+              errorMessage = "OpenRouter API key is missing. Please add it to your .env file.";
+              break;
+            case "API_KEY_INVALID_FORMAT":
+              errorMessage = "OpenRouter API key has invalid format. It should start with 'sk-or-v1-'.";
+              break;
+            case "API_KEY_INVALID":
+              errorMessage = "Invalid OpenRouter API key. Please check your credentials.";
+              break;
+            case "API_RATE_LIMIT":
+              errorMessage = "OpenRouter API rate limit exceeded. Please try again later.";
+              break;
+            case "NETWORK_ERROR":
+              errorMessage = "Network error connecting to OpenRouter API. Check your internet connection.";
+              break;
+            default:
+              errorMessage = result.message || "OpenRouter API connection failed.";
+          }
+          
+          toast.error(errorMessage, { 
+            id: "api-connection",
+            duration: 10000
+          });
+          
+          console.error("API connection error:", result.error, result.message);
+        }
+      } catch (error) {
+        console.error("Error checking API connection:", error);
+        toast.error("Failed to verify API connection", { 
+          id: "api-connection",
+          duration: 10000
+        });
+      }
+    };
+    
+    checkApiConnection();
+  }, []);
 
   // Fetch projects
   const fetchProjects = async () => {
@@ -350,12 +400,19 @@ const Dashboard = () => {
       
       console.log("Starting AI extraction for:", text.substring(0, 100) + "...");
       
+      // Check API key first
+      const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+      if (!apiKey) {
+        toast.error("API key not configured", { id: "ai-extraction" });
+        return;
+      }
+      
       // Process the document text with AI
       const result = await processPropertyDescription(text);
       console.log("AI extraction result:", result);
       
       // Check if we got valid results
-      if (!result || !result.placeholders) {
+      if (!result) {
         toast.error("Failed to extract information from document", { id: "ai-extraction" });
         return;
       }
@@ -365,7 +422,7 @@ const Dashboard = () => {
       const filledFields: string[] = [];
       
       // Loop through all placeholder fields
-      Object.entries(result.placeholders).forEach(([key, value]) => {
+      Object.entries(result.placeholders || {}).forEach(([key, value]) => {
         if (value && typeof value === 'string' && value.trim() !== '') {
           // Update the value in our state
           newPlaceholders[key as keyof PropertyPlaceholders] = value;
@@ -375,9 +432,9 @@ const Dashboard = () => {
       });
       
       // Specifically log critical fields for debugging
-      console.log("Title extracted:", result.placeholders.title);
-      console.log("Address extracted:", result.placeholders.address);
-      console.log("Price extracted:", result.placeholders.price);
+      console.log("Title extracted:", newPlaceholders.title || "");
+      console.log("Address extracted:", newPlaceholders.address || "");
+      console.log("Price extracted:", newPlaceholders.price || "");
       
       // Update state with new values
       setPlaceholders(newPlaceholders);
@@ -385,7 +442,7 @@ const Dashboard = () => {
       
       // Show success message
       if (filledFields.length > 0) {
-        toast.success(`Successfully extracted ${filledFields.length} fields`, { id: "ai-extraction" });
+        toast.success(`Successfully extracted ${filledFields.length} field${filledFields.length > 1 ? 's' : ''}`, { id: "ai-extraction" });
         
         // Show warning if critical fields weren't extracted
         const missingCriticalFields = [];
@@ -400,12 +457,12 @@ const Dashboard = () => {
           });
         }
       } else {
-        toast.error("No fields could be extracted from the document", { id: "ai-extraction" });
+        toast.error("No fields could be extracted from the document. Please fill in fields manually.", { id: "ai-extraction" });
       }
       
     } catch (error) {
       console.error('Error in document upload:', error);
-      toast.error("Error processing document", { id: "ai-extraction" });
+      toast.error("Error processing document. Please check console for details.", { id: "ai-extraction" });
     }
   };
 

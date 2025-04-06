@@ -96,26 +96,36 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
       setIsProcessing(true);
       toast.loading("Regenerating critical fields...", { id: "regenerate" });
       
+      // Get the API key from environment variables
+      const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+      
+      if (!apiKey) {
+        toast.error("API key not configured", { id: "regenerate" });
+        setUploadError("API key not configured. Please check your environment variables.");
+        setIsProcessing(false);
+        return;
+      }
+      
       // Send a targeted request to extract just title, address and price
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || ''}`,
+          'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': window.location.origin,
           'X-Title': 'Critical Fields Extractor'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3-haiku:free',
+          model: 'anthropic/claude-3-haiku:free', // More reliable model
           messages: [
             {
               role: 'system',
-              content: `Extract these three critical fields from the real estate property text:
+              content: `Extract ONLY these three critical fields from the real estate property text:
 1. TITLE: A professional property title that includes property type and main feature.
 2. ADDRESS: The complete property address or location.
 3. PRICE: The property price with currency.
 
-Output just a JSON with these three fields. Use all available clues to identify these fields correctly.`
+Output ONLY a JSON object with these three fields exactly. If information is not found, use an empty string.`
             },
             {
               role: 'user',
@@ -127,58 +137,90 @@ Output just a JSON with these three fields. Use all available clues to identify 
         }),
       });
       
+      if (!response.ok) {
+        console.error(`API request failed with status ${response.status}`);
+        toast.error(`API request failed with status ${response.status}`, { id: "regenerate" });
+        setUploadError(`API request failed with status ${response.status}`);
+        setIsProcessing(false);
+        return;
+      }
+      
       const data = await response.json();
-      const content = JSON.parse(data.choices[0].message.content);
       
-      console.log("Regenerated fields:", content);
-      
-      // Format the price if needed
-      let price = content.price || '';
-      if (price && !price.includes('€') && !price.toLowerCase().includes('eur')) {
-        price = price.trim() + ' €';
+      if (!data?.choices?.[0]?.message?.content) {
+        console.error("Invalid response format from AI service");
+        toast.error("Invalid response from AI service", { id: "regenerate" });
+        setUploadError("Invalid response from AI service");
+        setIsProcessing(false);
+        return;
       }
       
-      // Format the title
-      let title = content.title || '';
-      if (title) {
-        title = title.replace(/\b\w/g, (l: string) => l.toUpperCase());
+      let extractedContent;
+      try {
+        const content = data.choices[0].message.content;
+        console.log("Raw AI response:", content.substring(0, 200));
+        
+        if (typeof content !== 'string') {
+          throw new Error("Content is not a string");
+        }
+        
+        extractedContent = JSON.parse(content.trim());
+        console.log("Regenerated fields:", extractedContent);
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        toast.error("Failed to parse AI response", { id: "regenerate" });
+        setUploadError("Failed to parse AI response");
+        setIsProcessing(false);
+        return;
       }
       
-      // Create synthetic change events to update the fields
-      if (title) {
+      // Only update fields that were successfully extracted
+      let updatedCount = 0;
+      
+      if (extractedContent.title && typeof extractedContent.title === 'string') {
         const titleEvent = {
           target: {
             name: 'title',
-            value: title
+            value: extractedContent.title
           }
         } as React.ChangeEvent<HTMLInputElement>;
         handleInputChange(titleEvent);
+        updatedCount++;
       }
       
-      if (content.address) {
+      if (extractedContent.address && typeof extractedContent.address === 'string') {
         const addressEvent = {
           target: {
             name: 'address',
-            value: content.address
+            value: extractedContent.address
           }
         } as React.ChangeEvent<HTMLInputElement>;
         handleInputChange(addressEvent);
+        updatedCount++;
       }
       
-      if (price) {
+      if (extractedContent.price && typeof extractedContent.price === 'string') {
         const priceEvent = {
           target: {
             name: 'price',
-            value: price
+            value: extractedContent.price
           }
         } as React.ChangeEvent<HTMLInputElement>;
         handleInputChange(priceEvent);
+        updatedCount++;
       }
       
-      toast.success("Critical fields regenerated", { id: "regenerate" });
+      if (updatedCount > 0) {
+        toast.success(`${updatedCount} critical field${updatedCount > 1 ? 's' : ''} regenerated`, { id: "regenerate" });
+      } else {
+        toast.error("Could not extract any critical fields", { id: "regenerate" });
+        setUploadError("Could not extract any critical fields from the document");
+      }
+      
     } catch (error) {
       console.error("Error regenerating fields:", error);
       toast.error("Failed to regenerate fields", { id: "regenerate" });
+      setUploadError("Failed to regenerate fields. Please try again or fill in fields manually.");
     } finally {
       setIsProcessing(false);
     }
