@@ -1,84 +1,122 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { I18nextProvider } from "react-i18next";
+import i18n from "../i18n"; // Import from app directory
+import { LanguageProvider } from "../contexts/LanguageContext"; // Import from app directory
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/sections/Hero";
 import Features from "@/components/sections/Features";
-import CTASection from "@/components/sections/CTASection";
-import Testimonials from "@/components/sections/Testimonials";
-import Pricing from "@/components/sections/Pricing";
+import Demo from "@/components/sections/Demo";
+import Benefits from "@/components/sections/Benefits";
 import FAQ from "@/components/sections/FAQ";
-import CaseStudies from "@/components/sections/CaseStudies";
 import Footer from "@/components/layout/Footer";
-import AOS from "aos";
-import "aos/dist/aos.css";
+import TrustedBy from "@/components/sections/TrustedBy";
+import CTASection from "@/components/sections/CTASection";
 
 export default function Home() {
 	const [isLoading, setIsLoading] = useState(true);
-	const [showScrollTop, setShowScrollTop] = useState(false);
+	const [scrollingDown, setScrollingDown] = useState(false);
+	const [lastScrollY, setLastScrollY] = useState(0);
 
 	useEffect(() => {
-		AOS.init({
-			duration: 1000,
-			easing: "ease-out-cubic",
-			once: true,
-			offset: 50,
-			mirror: false
-		});
-
-		// Simulate content loading
-		setTimeout(() => {
+		// Simulate content loading with a smoother experience
+		const timer = setTimeout(() => {
 			setIsLoading(false);
-		}, 500);
+		}, 400);
 
-		// Handle scroll for scroll-to-top button
+		// Check if we need to load a saved language preference
+		if (typeof window !== "undefined") {
+			const savedLanguage = localStorage.getItem("preferred-language");
+			if (savedLanguage && i18n.language !== savedLanguage) {
+				i18n.changeLanguage(savedLanguage);
+			}
+		}
+
+		// Handle scroll events for animations
 		const handleScroll = () => {
-			setShowScrollTop(window.scrollY > 500);
+			const currentScrollY = window.scrollY;
+			if (currentScrollY > lastScrollY) {
+				setScrollingDown(true);
+			} else {
+				setScrollingDown(false);
+			}
+			setLastScrollY(currentScrollY);
 		};
 
-		window.addEventListener("scroll", handleScroll);
-		return () => window.removeEventListener("scroll", handleScroll);
-	}, []);
-
-	const scrollToTop = () => {
-		window.scrollTo({ top: 0, behavior: 'smooth' });
-	};
+		window.addEventListener("scroll", handleScroll, { passive: true });
+		
+		return () => {
+			clearTimeout(timer);
+			window.removeEventListener("scroll", handleScroll);
+		};
+	}, [lastScrollY]);
 
 	return (
-		<main className="bg-[#070c1b] relative min-h-screen">
-			{/* Subtle animated background stars */}
-			<div className="fixed inset-0 z-0 opacity-30 pointer-events-none overflow-hidden bg-[url('/stars-bg.png')] bg-repeat"></div>
-			
-			{isLoading ? (
-				<div className="flex items-center justify-center min-h-screen">
-					<div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
-				</div>
-			) : (
-				<div className="relative z-10">
-					<Navbar />
-					<Hero />
-					<Features />
-					<CaseStudies />
-					<Testimonials />
-					<Pricing />
-					<FAQ />
-					<CTASection />
-					<Footer />
-					
-					{/* Scroll to top button */}
-					{showScrollTop && (
-						<button 
-							onClick={scrollToTop}
-							className="fixed bottom-8 right-8 p-3 rounded-full bg-blue-600 text-white shadow-lg z-50 hover:bg-blue-700 transition-all"
-							aria-label="Scroll to top"
-						>
-							<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-							</svg>
-						</button>
+		<I18nextProvider i18n={i18n}>
+			<LanguageProvider>
+				<div className="min-h-screen overflow-hidden w-full bg-white">
+					{isLoading ? (
+						<div className="flex items-center justify-center min-h-screen">
+							<div className="flex flex-col items-center">
+								<div className="h-12 w-12 bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full animate-pulse mb-4"></div>
+								<div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+							</div>
+						</div>
+					) : (
+						<div className="relative">
+							{/* Background decorations */}
+							<div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+								<div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px]"></div>
+								<div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[100px]"></div>
+								
+								{/* Mobile-optimized gradient blobs */}
+								<div className="absolute top-[20%] left-[-20%] w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[80px] md:hidden"></div>
+								<div className="absolute bottom-[30%] right-[-10%] w-[250px] h-[250px] bg-indigo-500/5 rounded-full blur-[80px] md:hidden"></div>
+							</div>
+							
+							<Navbar />
+							
+							{/* Main content container with better padding for mobile */}
+							<div className="pt-16 md:pt-20">
+								<Hero />
+								<TrustedBy />
+								
+								{/* Adding section dividers for better visual separation on mobile */}
+								<div className="w-full max-w-6xl mx-auto px-4">
+									<div className="h-px bg-gray-100 my-4 md:my-8"></div>
+								</div>
+								
+								<Features />
+								
+								<div className="w-full max-w-6xl mx-auto px-4">
+									<div className="h-px bg-gray-100 my-4 md:my-8"></div>
+								</div>
+								
+								<Demo />
+								
+								<div className="w-full max-w-6xl mx-auto px-4">
+									<div className="h-px bg-gray-100 my-4 md:my-8"></div>
+								</div>
+								
+								<Benefits />
+								
+								<div className="w-full max-w-6xl mx-auto px-4 lg:hidden">
+									<div className="h-px bg-gray-100 my-4 md:my-8"></div>
+								</div>
+								
+								<FAQ />
+								
+								<div className="mt-4 md:mt-12">
+									<CTASection />
+								</div>
+								
+								<Footer />
+							</div>
+						</div>
 					)}
 				</div>
-			)}
-		</main>
+			</LanguageProvider>
+		</I18nextProvider>
 	);
 }

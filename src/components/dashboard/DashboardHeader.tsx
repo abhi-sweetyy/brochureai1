@@ -1,68 +1,59 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export interface DashboardHeaderProps {
-  credits?: number | null;
   userEmail?: string;
+  isMenuOpen: boolean;
+  setIsMenuOpen: (isOpen: boolean) => void;
+  credits?: number | null;
 }
 
-const DashboardHeader = ({ credits, userEmail }: DashboardHeaderProps) => {
+const DashboardHeader = ({ userEmail, isMenuOpen, setIsMenuOpen, credits }: DashboardHeaderProps) => {
   const router = useRouter();
-  const supabase = createClientComponentClient();
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
 
   return (
-    <header className="bg-[#0c1324] border-b border-[#1c2a47] py-4">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <div className="mr-2 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center">
-                <span className="text-white font-bold text-lg">B</span>
-              </div>
-              <span className="text-white font-bold text-xl">Brochure<span className="text-blue-500">AI</span></span>
-            </Link>
-          </div>
-          
-          <div className="flex items-center space-x-6">
-            {credits !== undefined && (
-              <div className="hidden md:flex items-center px-4 py-1.5 bg-[#111b33] border border-[#1c2a47] rounded-lg">
-                <span className="text-gray-400 text-sm mr-2">Credits:</span>
-                <span className="text-white font-medium">{credits}</span>
-              </div>
+    <header className="bg-white border-b border-gray-200 py-3 px-4 shadow-sm fixed top-0 left-0 right-0 z-40 h-16">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          {/* Mobile menu button */}
+          <button
+            type="button"
+            className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 mr-2"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <span className="sr-only">Open main menu</span>
+            {isMenuOpen ? (
+              <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             )}
-            
-            <div className="relative group">
-              <button className="flex items-center space-x-2 text-gray-300 hover:text-white focus:outline-none">
-                <span className="hidden md:inline-block">{userEmail || 'Account'}</span>
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              <div className="absolute right-0 mt-2 w-48 bg-[#111b33] border border-[#1c2a47] rounded-lg shadow-xl py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <Link href="/dashboard" className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#192338] hover:text-white">
-                  Dashboard
-                </Link>
-                <Link href="/dashboard/billing" className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#192338] hover:text-white">
-                  Billing
-                </Link>
-                <button 
-                  onClick={handleSignOut}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#192338] hover:text-white"
-                >
-                  Sign Out
-                </button>
-              </div>
-            </div>
+          </button>
+
+          <Link href="/" className="flex items-center">
+            <img
+              src="/favicon.png"
+              alt="ExposeFlow Logo"
+              className="h-8 w-auto mr-2"
+            />
+            <span className="text-[#5169FE] font-bold text-xl">
+              ExposeFlow
+            </span>
+          </Link>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          {/* User email display */}
+          <div className="hidden sm:flex items-center text-gray-600">
+            <span className="text-sm font-medium">
+              {userEmail || "Account"}
+            </span>
           </div>
         </div>
       </div>

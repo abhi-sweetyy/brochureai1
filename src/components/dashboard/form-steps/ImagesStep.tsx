@@ -45,6 +45,13 @@ export function ImagesStep({
   const [image8, setImage8] = useState<string>(uploadedImages['{{image8}}'] || '');
   const [image9, setImage9] = useState<string>(uploadedImages['{{image9}}'] || '');
 
+  // Handle clicks on the image uploader to prevent form submission
+  const handleImageUploaderClick = (e: React.MouseEvent) => {
+    // Only stop propagation to prevent form submission
+    // but don't prevent default actions like opening file pickers
+    e.stopPropagation();
+  };
+
   useEffect(() => {
     setLogo(logoUrl || '');
     setAgent(uploadedImages['{{agent}}'] || '');
@@ -85,9 +92,58 @@ export function ImagesStep({
   };
 
   const handleImageUpdate = (placeholder: keyof ImagePlaceholders, urls: string[]) => {
-    if (urls.length === 0) return;
+    if (urls.length === 0) {
+      // If urls is empty, it means the image was removed
+      console.log(`Clearing image for placeholder: ${placeholder}`);
+      
+      // Update local state
+      switch (placeholder) {
+        case '{{logo}}':
+          setLogo('');
+          setLogoUrl?.('');
+          break;
+        case '{{agent}}':
+          setAgent('');
+          break;
+        case '{{image1}}':
+          setImage1('');
+          break;
+        case '{{image2}}':
+          setImage2('');
+          break;
+        case '{{image3}}':
+          setImage3('');
+          break;
+        case '{{image4}}':
+          setImage4('');
+          break;
+        case '{{image5}}':
+          setImage5('');
+          break;
+        case '{{image6}}':
+          setImage6('');
+          break;
+        case '{{image7}}':
+          setImage7('');
+          break;
+        case '{{image8}}':
+          setImage8('');
+          break;
+        case '{{image9}}':
+          setImage9('');
+          break;
+      }
+      
+      // Update parent state by removing the image URL
+      const newImages = {...uploadedImages};
+      newImages[placeholder] = '';
+      setUploadedImages(newImages);
+      
+      return;
+    }
     
     const url = urls[0];
+    console.log(`Updating image for placeholder: ${placeholder} with URL: ${url}`);
     
     // Update local state
     switch (placeholder) {
@@ -144,9 +200,12 @@ export function ImagesStep({
         <h3 className="text-lg font-semibold mb-2">Company Logo</h3>
         <p className="text-gray-600 mb-4">Upload your company logo that will appear on all pages</p>
         <ImageUploader
-          existingImages={logo ? [logo] : []}
-          onImagesUploaded={(urls: string[]) => handleImageUpdate('{{logo}}', urls)}
+          existingImages={logoUrl ? [logoUrl] : []}
+          onImagesUploaded={(urls) => {
+            handleImageUpdate('{{logo}}', urls);
+          }}
           limit={1}
+          onClick={handleImageUploaderClick}
         />
       </div>
     );
@@ -157,9 +216,12 @@ export function ImagesStep({
         <h3 className="text-lg font-semibold mb-2">Agent Photo</h3>
         <p className="text-gray-600 mb-4">Upload a professional photo of the agent</p>
         <ImageUploader
-          existingImages={agent ? [agent] : []}
-          onImagesUploaded={(urls: string[]) => handleImageUpdate('{{agent}}', urls)}
+          existingImages={uploadedImages['{{agent}}'] ? [uploadedImages['{{agent}}']] : []}
+          onImagesUploaded={(urls) => {
+            handleImageUpdate('{{agent}}', urls);
+          }}
           limit={1}
+          onClick={handleImageUploaderClick}
         />
       </div>
     );
@@ -174,6 +236,7 @@ export function ImagesStep({
             existingImages={image1 ? [image1] : []}
             onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image1}}', urls)}
             limit={1}
+            onClick={handleImageUploaderClick}
           />
         </div>
       );
@@ -189,6 +252,7 @@ export function ImagesStep({
             existingImages={image2 ? [image2] : []}
             onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image2}}', urls)}
             limit={1}
+            onClick={handleImageUploaderClick}
           />
         </div>
       );
@@ -207,6 +271,7 @@ export function ImagesStep({
                 existingImages={image3 ? [image3] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image3}}', urls)}
                 limit={1}
+                onClick={handleImageUploaderClick}
               />
             </div>
             <div>
@@ -215,6 +280,7 @@ export function ImagesStep({
                 existingImages={image4 ? [image4] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image4}}', urls)}
                 limit={1}
+                onClick={handleImageUploaderClick}
               />
             </div>
           </div>
@@ -235,6 +301,7 @@ export function ImagesStep({
                 existingImages={image5 ? [image5] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image5}}', urls)}
                 limit={1}
+                onClick={handleImageUploaderClick}
               />
             </div>
             <div>
@@ -243,6 +310,7 @@ export function ImagesStep({
                 existingImages={image6 ? [image6] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image6}}', urls)}
                 limit={1}
+                onClick={handleImageUploaderClick}
               />
             </div>
           </div>
@@ -260,6 +328,7 @@ export function ImagesStep({
             existingImages={image7 ? [image7] : []}
             onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image7}}', urls)}
             limit={1}
+            onClick={handleImageUploaderClick}
           />
         </div>
       );
@@ -278,6 +347,7 @@ export function ImagesStep({
                 existingImages={image8 ? [image8] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image8}}', urls)}
                 limit={1}
+                onClick={handleImageUploaderClick}
               />
             </div>
             <div>
@@ -286,6 +356,7 @@ export function ImagesStep({
                 existingImages={image9 ? [image9] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image9}}', urls)}
                 limit={1}
+                onClick={handleImageUploaderClick}
               />
             </div>
           </div>

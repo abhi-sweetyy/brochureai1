@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface PDFViewerProps {
   pdfBytes: Uint8Array;
@@ -14,12 +14,12 @@ export default function PDFViewer({ pdfBytes }: PDFViewerProps) {
     try {
       if (pdfBytes && pdfBytes.length > 0) {
         // Convert Uint8Array to Blob
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+
         // Create object URL
         const url = URL.createObjectURL(blob);
         setPdfUrl(url);
-        
+
         // Clean up URL when component unmounts
         return () => {
           URL.revokeObjectURL(url);
@@ -35,7 +35,7 @@ export default function PDFViewer({ pdfBytes }: PDFViewerProps) {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-900 text-red-500 p-4">
+      <div className="flex items-center justify-center h-full bg-white text-red-600 p-4">
         <p>{error}</p>
       </div>
     );
@@ -43,19 +43,19 @@ export default function PDFViewer({ pdfBytes }: PDFViewerProps) {
 
   if (!pdfUrl) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
+      <div className="flex items-center justify-center h-full bg-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5169FE]" />
       </div>
     );
   }
 
   return (
     <div className="h-full w-full">
-      <iframe 
+      <iframe
         src={`${pdfUrl}#toolbar=0`}
         className="w-full h-full border-0"
         title="PDF Viewer"
       />
     </div>
   );
-} 
+}

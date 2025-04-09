@@ -17,6 +17,9 @@ interface ImageUploaderProps {
   // Common props
   uploading?: boolean;
   limit?: number;
+  
+  // Event handler to stop form propagation
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 // Add new interfaces for our editor
@@ -37,7 +40,8 @@ export default function ImageUploader({
   onReplace,
   onImagesUploaded,
   uploading = false,
-  limit = 10
+  limit = 10,
+  onClick
 }: ImageUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropAreaRef = useRef<HTMLDivElement>(null);
@@ -51,6 +55,7 @@ export default function ImageUploader({
 
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [tempFileToEdit, setTempFileToEdit] = useState<File | null>(null);
   const [editorState, setEditorState] = useState<EditorState>({
     brightness: 0,
     contrast: 0,
@@ -70,6 +75,31 @@ export default function ImageUploader({
   // Add a layer reference for blur shapes
   const blurLayerRef = useRef<Konva.Layer | null>(null);
   
+  // Add animation state for enhance effect
+  const [showEnhanceAnimation, setShowEnhanceAnimation] = useState(false);
+  
+  // Add state for tracking save in progress
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Detect mobile devices
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check if device is mobile on mount and window resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    // Check immediately
+    checkMobile();
+    
+    // Add resize listener
+    window.addEventListener('resize', checkMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Function to delete an image from Supabase storage
   const deleteImageFromStorage = async (url: string): Promise<boolean> => {
     try {
@@ -274,127 +304,16 @@ export default function ImageUploader({
     }
   };
 
-  // Function to save edited image
-  const saveEditedImage = async () => {
-    if (editingIndex === null || !editingImage) return;
-    
-    const editedFile = applyFiltersAndGetFile();
-    if (!editedFile) return;
-    
-    try {
-      setIsUploading(true);
-      console.log('🖌️ Saving edited image...');
-      
-      // Store the old URL
-      const oldImageUrl = editingImage;
-      console.log('🔗 Old image URL:', oldImageUrl);
-      
-      if (onReplace) {
-        console.log('🔄 Using onReplace for edited image');
-        
-        // Call onReplace function to let parent handle the upload
-        await onReplace(editingIndex, editedFile);
-        
-        // We'll also try to delete the old image ourselves
-        console.log('🗑️ Attempting to delete old image after onReplace');
-        const deleteResult = await deleteImageFromStorage(oldImageUrl);
-        console.log(`${deleteResult ? '✅' : '❌'} Deletion result:`, deleteResult);
-      } else if (onImagesUploaded) {
-        console.log('🔄 Using onImagesUploaded for edited image');
-        
-        // Upload the new image as an edited image (may use templateId folder)
-        const uploadedUrl = await uploadFile(editedFile, oldImageUrl, true);
-        console.log('✅ New edited image uploaded:', uploadedUrl);
-        
-        // Update the URLs array
-        const newUrls = [...displayImages];
-        newUrls[editingIndex] = uploadedUrl;
-        
-        // Update the state via the callback
-        onImagesUploaded(newUrls);
-      }
-      
-      // Reset editing state
-      setEditingImage(null);
-      setEditingIndex(null);
-      setEditorState({
-        brightness: 0,
-        contrast: 0,
-        blur: 0,
-        isDrawingBlur: false,
-        blurBrushSize: 20,
-        blurBrushStrength: 5,
-        blurRectangles: []
-      });
-      
-      console.log('✅ Image edit saved successfully');
-    } catch (error) {
-      console.error('💥 Error saving edited image:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Handle replacing or adding new images
+  // Modified to open the editor first when a file is selected
   const handleFileSelect = async (file: File) => {
     try {
-      setIsUploading(true);
-      
-      if (replaceIndex !== null && onReplace) {
-        // Replace existing image using onReplace
-        console.log('🔄 Replacing image at index using onReplace:', replaceIndex);
-        
-        // Store old URL
-        const oldImageUrl = displayImages[replaceIndex];
-        console.log('🔗 Old image URL to replace:', oldImageUrl);
-        
-        // Let parent component handle the replacement
-        await onReplace(replaceIndex, file);
-        
-        // Also try to delete the old image ourselves
-        console.log('🗑️ Attempting to delete old image after onReplace');
-        const deleteResult = await deleteImageFromStorage(oldImageUrl);
-        console.log(`${deleteResult ? '✅' : '❌'} Deletion result:`, deleteResult);
-      } else if (replaceIndex !== null && onImagesUploaded) {
-        // Replace existing image using onImagesUploaded
-        console.log('🔄 Replacing image at index using onImagesUploaded:', replaceIndex);
-        
-        // Store the old URL
-        const oldImageUrl = displayImages[replaceIndex];
-        console.log('🔗 Old image URL to replace:', oldImageUrl);
-        
-        // Check if this is an edited image (might be in a templateId folder)
-        const isInTemplateFolder = Boolean(
-          oldImageUrl.includes('/') && !oldImageUrl.includes('/uploads/')
-        );
-        
-        // Upload the new image, using the same folder as the old one
-        const uploadedUrl = await uploadFile(file, oldImageUrl, isInTemplateFolder);
-        console.log('✅ New image uploaded:', uploadedUrl);
-        
-        // Update the URLs array
-        const newUrls = [...displayImages];
-        newUrls[replaceIndex] = uploadedUrl;
-        
-        // Update the state via the callback
-        onImagesUploaded(newUrls);
-      } else if (onUpload) {
-        // Upload new image using onUpload
-        console.log('📤 Uploading new image using onUpload');
-        await onUpload(file);
-      } else if (onImagesUploaded) {
-        // Upload new image using onImagesUploaded
-        console.log('📤 Uploading new image using onImagesUploaded');
-        const uploadedUrl = await uploadFile(file);
-        console.log('✅ New image uploaded:', uploadedUrl);
-        onImagesUploaded([...displayImages, uploadedUrl]);
-      }
+      // Create an image URL from the file for editing
+      const imageURL = URL.createObjectURL(file);
+      setTempFileToEdit(file);
+      setEditingImage(imageURL);
+      setEditingIndex(-1); // Use -1 to indicate this is a new image
     } catch (error) {
       console.error('💥 Error handling file:', error);
-    } finally {
-      setIsUploading(false);
-      setReplaceIndex(null);
-      
       // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -402,14 +321,76 @@ export default function ImageUploader({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFileSelect(files[0]);
+  // Modified saveEditedImage to handle the case when we're editing a new upload
+  const saveEditedImage = async () => {
+    if (!editingImage || !konvaImageRef.current) return;
+    
+    // Set saving state to true
+    setIsSaving(true);
+    
+    try {
+      // Get the updated image as a file
+      const imageFile = applyFiltersAndGetFile();
+      
+      if (!imageFile) {
+        console.error('Failed to get edited image file');
+        setIsSaving(false);
+        return;
+      }
+      
+      if (tempFileToEdit) {
+        // If editing a file that was just selected but not yet uploaded
+        await handleFileSelect(imageFile);
+        setTempFileToEdit(null);
+        setEditingImage(null);
+        setEditingIndex(null);
+      } else if (editingIndex !== null) {
+        // If editing an existing image
+        const oldUrl = displayImages[editingIndex];
+        const result = await uploadFile(imageFile, oldUrl, true);
+        
+        if (result) {
+          // Create a new array with the updated image URL
+          const newImages = [...displayImages];
+          newImages[editingIndex] = result;
+          
+          // Notify parent component
+          if (onImagesUploaded) {
+            onImagesUploaded(newImages);
+          }
+          
+          // Clear editing state
+          setEditingImage(null);
+          setEditingIndex(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving edited image:', error);
+    } finally {
+      // Reset saving state
+      setIsSaving(false);
     }
   };
 
-  const handleAreaClick = () => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Don't stop propagation or prevent default here
+    // as it would interfere with file selection
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileSelect(files[0]);
+      
+      // If replacing, store the index for later use
+      if (replaceIndex !== null) {
+        setEditingIndex(replaceIndex);
+      }
+    }
+  };
+
+  const handleAreaClick = (e: React.MouseEvent) => {
+    // Only prevent default at the current level, but allow click to continue
+    // for file input clicks
+    e.stopPropagation();
+    
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -444,7 +425,11 @@ export default function ImageUploader({
     }
   };
 
-  const handleReplaceClick = (index: number) => {
+  const handleReplaceClick = (index: number, e: React.MouseEvent) => {
+    // Prevent the event from bubbling up to parent elements (especially form)
+    // but don't prevent default actions on the button itself
+    e.stopPropagation();
+    
     setReplaceIndex(index);
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -468,174 +453,251 @@ export default function ImageUploader({
   const applyFiltersAndGetFile = () => {
     if (!stageRef.current) return null;
     
-    // Apply brightness and contrast manually
-    const stage = stageRef.current;
-    
-    // Get the dataURL of the canvas
-    const dataURL = stage.toDataURL();
-    
-    // Convert the dataURL to a File object
-    const file = dataURLtoFile(dataURL, `edited_image_${Date.now()}.png`);
-    
-    return file;
+    try {
+      // Apply brightness and contrast manually
+      const stage = stageRef.current;
+      
+      // Get the dataURL of the canvas
+      const dataURL = stage.toDataURL({
+        mimeType: 'image/png',
+        quality: 1,
+        pixelRatio: 1
+      });
+      
+      // Convert the dataURL to a File object
+      const file = dataURLtoFile(dataURL, `edited_image_${Date.now()}.png`);
+      
+      return file;
+    } catch (error) {
+      console.error('Error applying filters and getting file:', error);
+      alert('There was an error processing the image. Please try again with a different image.');
+      return null;
+    }
   };
 
-  // Initialize Konva stage when editing image
-  useEffect(() => {
-    if (!editingImage || !canvasRef.current) return;
+  // Function to enhance the image (increase brightness and contrast by 10%)
+  const enhanceImage = () => {
+    if (!konvaImageRef.current) return;
     
-    console.log('Loading image for editing:', editingImage);
+    // Show animation effect
+    setShowEnhanceAnimation(true);
     
-    // Clean up any existing stage
-    if (stageRef.current) {
-      console.log('Destroying previous stage');
-      stageRef.current.destroy();
-      stageRef.current = null;
-    }
+    // Store the current image state
+    const currentBrightness = editorState.brightness;
+    const currentContrast = editorState.contrast;
     
-    // Clear canvas container
-    if (canvasRef.current) {
-      canvasRef.current.innerHTML = '';
-      canvasRef.current.style.backgroundColor = '#0a0a0a'; // Dark background
-    }
+    // Calculate new values (for later application)
+    const newBrightness = Math.min(currentBrightness + 10, 100);
+    const newContrast = Math.min(currentContrast + 10, 100);
     
-    // Load the image
-    const image = new Image();
-    image.crossOrigin = 'Anonymous';
-    image.src = editingImage;
-    
-    image.onload = () => {
-      console.log('Image loaded, dimensions:', image.width, 'x', image.height);
+    // Keep the original image visible during animation
+    // Apply changes after animation completes (2 seconds)
+    setTimeout(() => {
+      if (!konvaImageRef.current) {
+        setShowEnhanceAnimation(false);
+        return;
+      }
       
+      // First update the state
+      setEditorState(prevState => ({
+        ...prevState,
+        brightness: newBrightness,
+        contrast: newContrast
+      }));
+      
+      // Then update the image with the new values
+      konvaImageRef.current.brightness(newBrightness / 100);
+      konvaImageRef.current.contrast(1 + newContrast / 25);
+      konvaImageRef.current.getLayer()?.batchDraw();
+      
+      // Hide animation after changes are complete
+      setShowEnhanceAnimation(false);
+    }, 2000); // Show animation for 2 seconds
+  };
+
+  // Initialize the Konva stage and image
+  useEffect(() => {
+    if (editingImage && canvasRef.current) {
       try {
-        // Calculate dimensions
-        const maxWidth = Math.min(window.innerWidth * 0.6, 800);
-        const maxHeight = Math.min(window.innerHeight * 0.6, 500);
-        let width = image.width;
-        let height = image.height;
-        
-        // Calculate proper scaling to fit
-        const aspectRatio = width / height;
-        
-        if (width > maxWidth) {
-          width = maxWidth;
-          height = width / aspectRatio;
+        // Clean up any existing stage
+        if (stageRef.current) {
+          stageRef.current.destroy();
+          stageRef.current = null;
         }
         
-        if (height > maxHeight) {
-          height = maxHeight;
-          width = height * aspectRatio;
-        }
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = editingImage;
         
-        console.log('Calculated stage dimensions:', width, 'x', height);
-        
-        // Create new stage
-        const stage = new Konva.Stage({
-          container: canvasRef.current!,
-          width: width,
-          height: height,
-        });
-        stageRef.current = stage;
-        
-        // Create image layer
-        const imageLayer = new Konva.Layer();
-        imageLayerRef.current = imageLayer;
-        
-        // Create a separate layer for blur rectangles
-        const blurLayer = new Konva.Layer();
-        blurLayerRef.current = blurLayer;
-        
-        stage.add(imageLayer);
-        stage.add(blurLayer);
-        
-        // Add image to layer
-        const konvaImage = new Konva.Image({
-          image: image,
-          width: width,
-          height: height,
-        });
-        konvaImageRef.current = konvaImage;
-        
-        konvaImage.cache();
-        konvaImage.filters([Konva.Filters.Brighten, Konva.Filters.Contrast, Konva.Filters.Blur]);
-        konvaImage.brightness(editorState.brightness / 100);
-        konvaImage.contrast(1 + editorState.contrast / 25);
-        konvaImage.blurRadius(editorState.blur);
-        
-        imageLayer.add(konvaImage);
-        imageLayer.batchDraw();
-        
-        // Draw existing blur rectangles
-        editorState.blurRectangles.forEach(rect => {
-          // Apply blur to the specific region
-          const blurredRegionImage = applyActualBlurToRegion(
-            rect.x, rect.y, rect.width, rect.height, rect.blur
-          );
+        img.onload = () => {
+          // Get the container dimensions first to ensure stability
+          const container = canvasRef.current;
+          if (!container) return;
           
-          if (blurredRegionImage) {
-            // Create rectangle to show the blur region boundary
+          // Fix the container dimensions explicitly before creating the stage
+          // Use getBoundingClientRect to get accurate container size
+          const containerRect = container.getBoundingClientRect();
+          const containerWidth = containerRect.width;
+          const containerHeight = containerRect.height;
+          
+          // Lock container dimensions
+          container.style.width = `${containerWidth}px`;
+          container.style.height = `${containerHeight}px`;
+          container.style.position = 'relative';
+          container.style.touchAction = 'none';
+          container.style.backgroundColor = 'transparent'; // Set transparent background
+          
+          // Calculate image dimensions while maintaining aspect ratio
+          const imgAspectRatio = img.width / img.height;
+          const containerAspectRatio = containerWidth / containerHeight;
+          
+          let imageWidth, imageHeight;
+          let offsetX = 0, offsetY = 0;
+          
+          // Determine if we need to fit by width or height
+          if (imgAspectRatio > containerAspectRatio) {
+            // Fit by width
+            imageWidth = containerWidth * 0.95; // 95% of container width to add some padding
+            imageHeight = imageWidth / imgAspectRatio;
+            offsetY = (containerHeight - imageHeight) / 2;
+          } else {
+            // Fit by height
+            imageHeight = containerHeight * 0.95; // 95% of container height to add some padding
+            imageWidth = imageHeight * imgAspectRatio;
+            offsetX = (containerWidth - imageWidth) / 2;
+          }
+          
+          // Create new stage with fixed container dimensions
+          const stage = new Konva.Stage({
+            container: container,
+            width: containerWidth,
+            height: containerHeight
+          });
+          
+          // Set a background color for the stage that matches the editor
+          stage.container().style.backgroundColor = 'transparent';
+          
+          // Fix to prevent scaling/shifting
+          stage.scale({ x: 1, y: 1 });
+          stage.offset({ x: 0, y: 0 });
+          stage.position({ x: 0, y: 0 });
+          
+          stageRef.current = stage;
+          
+          // Create layers
+          const imageLayer = new Konva.Layer();
+          const blurLayer = new Konva.Layer();
+          const effectsLayer = new Konva.Layer(); // Layer for animations
+          
+          imageLayerRef.current = imageLayer;
+          blurLayerRef.current = blurLayer;
+          
+          stage.add(imageLayer);
+          stage.add(blurLayer);
+          stage.add(effectsLayer);
+          
+          // Create and add the image - center it in the stage
+          const konvaImage = new Konva.Image({
+            x: offsetX,
+            y: offsetY,
+            image: img,
+            width: imageWidth,
+            height: imageHeight,
+            listening: false // Disable mouse events on the image to prevent shifting
+          });
+          
+          konvaImageRef.current = konvaImage;
+          
+          // Add image to layer
+          konvaImage.cache(); // Cache image for better performance
+          konvaImage.filters([Konva.Filters.Brighten, Konva.Filters.Contrast, Konva.Filters.Blur]);
+          konvaImage.brightness(editorState.brightness / 100);
+          konvaImage.contrast(1 + editorState.contrast / 25);
+          konvaImage.blurRadius(editorState.blur);
+          
+          imageLayer.add(konvaImage);
+          imageLayer.batchDraw();
+          
+          // Disable stage dragging to prevent jumps
+          stage.draggable(false);
+          
+          // Store the original stage dimensions to maintain stability
+          const originalWidth = stage.width();
+          const originalHeight = stage.height();
+          
+          // Draw existing blur rectangles
+          editorState.blurRectangles.forEach(rect => {
+            const { id, x, y, width, height, blur } = rect;
+            
+            // Create a rectangle for the blur region
             const blurRect = new Konva.Rect({
-              x: rect.x,
-              y: rect.y,
-              width: rect.width,
-              height: rect.height,
-              fill: 'transparent',
+              x: offsetX + (x * imageWidth),
+              y: offsetY + (y * imageHeight),
+              width: width * imageWidth,
+              height: height * imageHeight,
               stroke: 'transparent',
-              strokeWidth: 1,
-              draggable: true,
-              id: rect.id,
-              name: 'blurRect'
+              strokeWidth: 0,
+              name: 'blurRect',
+              id: id
             });
             
-            // Instead of clip, we'll create a new layer with a clipping function
+            // Create the blurred image inside the rectangle boundaries
             const clipGroup = new Konva.Group({
-              clipFunc: function(ctx) {
-                ctx.beginPath();
-                ctx.rect(rect.x, rect.y, rect.width, rect.height);
-                ctx.closePath();
-              },
-              id: `${rect.id}-clip`
+              clip: {
+                x: offsetX + (x * imageWidth),
+                y: offsetY + (y * imageHeight),
+                width: width * imageWidth,
+                height: height * imageHeight
+              }
             });
             
-            // Create a Konva image using the blurred region
+            // Clone the image for blurring
             const blurredImage = new Konva.Image({
-              image: blurredRegionImage,
-              x: 0,
-              y: 0,
-              width: stageRef.current ? stageRef.current.width() : 0,
-              height: stageRef.current ? stageRef.current.height() : 0,
-              id: `${rect.id}-img`,
-              name: 'blurredImage',
-              listening: false
+              x: offsetX,
+              y: offsetY,
+              image: img,
+              width: imageWidth,
+              height: imageHeight,
+              name: 'blurredImage'
             });
             
-            // Add the blurred image to the clipping group
-            clipGroup.add(blurredImage);
+            // Apply blur to the cloned image
+            blurredImage.cache();
+            blurredImage.filters([Konva.Filters.Blur]);
+            blurredImage.blurRadius(blur);
             
-            // Add elements to blur layer
+            // Add to layers
+            clipGroup.add(blurredImage);
             blurLayer.add(clipGroup);
             blurLayer.add(blurRect);
+            blurLayer.batchDraw();
             
-            // When the rectangle is moved, update the clip area as well
-            blurRect.on('dragmove', function() {
-              const newX = blurRect.x();
-              const newY = blurRect.y();
-              
-              // Update the clipping function
-              clipGroup.clipFunc(function(ctx) {
-                ctx.beginPath();
-                ctx.rect(newX, newY, rect.width, rect.height);
-                ctx.closePath();
+            // Enable drag and resize for rect
+            blurRect.draggable(true);
+            
+            // Handle drag
+            blurRect.on('dragmove', () => {
+              // Update clip region to follow the rectangle
+              clipGroup.clip({
+                x: blurRect.x(),
+                y: blurRect.y(),
+                width: blurRect.width(),
+                height: blurRect.height()
               });
               
-              // Update state to reflect new position
+              // Update state with normalized coordinates (0-1 range)
               setEditorState({
                 ...editorState,
-                blurRectangles: editorState.blurRectangles.map(r => 
-                  r.id === rect.id 
-                    ? {...r, x: newX, y: newY}
-                    : r
-                )
+                blurRectangles: editorState.blurRectangles.map(r => {
+                  if (r.id === id) {
+                    return {
+                      ...r,
+                      x: (blurRect.x() - offsetX) / imageWidth,
+                      y: (blurRect.y() - offsetY) / imageHeight
+                    };
+                  }
+                  return r;
+                })
               });
               
               blurLayer.batchDraw();
@@ -646,7 +708,7 @@ export default function ImageUploader({
               // Remove from state
               setEditorState({
                 ...editorState,
-                blurRectangles: editorState.blurRectangles.filter(r => r.id !== rect.id)
+                blurRectangles: editorState.blurRectangles.filter(r => r.id !== id)
               });
               
               // Remove from layer
@@ -654,193 +716,200 @@ export default function ImageUploader({
               clipGroup.destroy();
               blurLayer.batchDraw();
             });
-          }
-        });
-        
-        // Set up drawing functionality for blur rectangles
-        let startPoint = {x: 0, y: 0};
-        let selectionRect: Konva.Rect | null = null;
-        let isDrawing = false;
-        
-        // Add event handlers for creating new blur rectangles
-        stage.on('mousedown touchstart', (e) => {
-          if (!editorState.isDrawingBlur) return;
-          
-          // Prevent default behavior
-          e.evt.preventDefault();
-          
-          // Get mouse position
-          const pos = stage.getPointerPosition();
-          if (!pos) return;
-          
-          isDrawing = true;
-          startPoint = {x: pos.x, y: pos.y};
-          
-          // Create a new selection rectangle
-          selectionRect = new Konva.Rect({
-            x: startPoint.x,
-            y: startPoint.y,
-            width: 0,
-            height: 0,
-            fill: 'transparent',
-            stroke: 'rgba(138, 43, 226, 0.8)',
-            strokeWidth: 1,
-            dash: [5, 5],
           });
           
-          blurLayer.add(selectionRect);
-          blurLayer.batchDraw();
-        });
-        
-        stage.on('mousemove touchmove', (e) => {
-          if (!isDrawing || !selectionRect || !editorState.isDrawingBlur) return;
+          // Variables for drawing blur regions
+          let isDrawing = false;
+          let startX = 0;
+          let startY = 0;
+          let selectionRect: Konva.Rect | null = null;
           
-          // Prevent default behavior
-          e.evt.preventDefault();
+          // Handle mouse down
+          stage.on('mousedown touchstart', (e) => {
+            if (!editorState.isDrawingBlur) return;
+            
+            // Prevent default to stop unwanted behaviors
+            e.evt.preventDefault();
+            e.evt.stopPropagation();
+            
+            // Fix stage dimensions at the start of drawing
+            stage.width(originalWidth);
+            stage.height(originalHeight);
+            container.style.width = `${originalWidth}px`;
+            container.style.height = `${originalHeight}px`;
+            
+            // Start drawing
+            isDrawing = true;
+            
+            // Get position relative to the stage
+            const pos = stage.getPointerPosition();
+            if (!pos) return;
+            
+            startX = pos.x;
+            startY = pos.y;
+            
+            // Create a new selection rectangle
+            selectionRect = new Konva.Rect({
+              x: startX,
+              y: startY,
+              width: 0,
+              height: 0,
+              fill: 'rgba(0, 0, 0, 0.1)',
+              stroke: 'rgba(255, 255, 255, 0.3)',
+              strokeWidth: 1,
+              dash: [4, 4]
+            });
+            
+            blurLayer.add(selectionRect);
+            blurLayer.batchDraw();
+          });
           
-          // Get mouse position
-          const pos = stage.getPointerPosition();
-          if (!pos) return;
+          // Handle mouse move
+          stage.on('mousemove touchmove', (e) => {
+            if (!isDrawing || !selectionRect || !editorState.isDrawingBlur) return;
+            
+            // Prevent default behaviors
+            e.evt.preventDefault();
+            e.evt.stopPropagation();
+            
+            // Get current pointer position
+            const pos = stage.getPointerPosition();
+            if (!pos) return;
+            
+            // Calculate new width and height
+            const rectWidth = pos.x - startX;
+            const rectHeight = pos.y - startY;
+            
+            // Update the selection rectangle
+            selectionRect.width(rectWidth);
+            selectionRect.height(rectHeight);
+            blurLayer.batchDraw();
+          });
           
-          // Update the selection rectangle
-          const width = pos.x - startPoint.x;
-          const height = pos.y - startPoint.y;
-          
-          selectionRect.width(width);
-          selectionRect.height(height);
-          blurLayer.batchDraw();
-        });
-        
-        stage.on('mouseup touchend', (e) => {
-          if (!isDrawing || !selectionRect || !editorState.isDrawingBlur) {
+          // Handle mouse up
+          stage.on('mouseup touchend', (e) => {
+            if (!isDrawing || !selectionRect || !editorState.isDrawingBlur) {
+              isDrawing = false;
+              return;
+            }
+            
+            // Prevent default behavior
+            e.evt.preventDefault();
+            e.evt.stopPropagation();
+            
+            // Finalize the selection
             isDrawing = false;
-            return;
-          }
-          
-          // Prevent default behavior
-          e.evt.preventDefault();
-          
-          // Finalize the selection
-          isDrawing = false;
-          
-          // Get the final rectangle dimensions
-          let rect = {
-            x: selectionRect.x(),
-            y: selectionRect.y(),
-            width: selectionRect.width(),
-            height: selectionRect.height()
-          };
-          
-          // Normalize negative width/height
-          if (rect.width < 0) {
-            rect.x += rect.width;
-            rect.width = Math.abs(rect.width);
-          }
-          
-          if (rect.height < 0) {
-            rect.y += rect.height;
-            rect.height = Math.abs(rect.height);
-          }
-          
-          // Only create rectangles with meaningful dimensions
-          if (rect.width > 5 && rect.height > 5) {
-            // Remove selection rectangle
-            selectionRect.destroy();
             
-            // Create a unique ID
-            const rectId = `rect-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            // Get the final rectangle dimensions
+            let rect = {
+              x: selectionRect.x(),
+              y: selectionRect.y(),
+              width: selectionRect.width(),
+              height: selectionRect.height()
+            };
             
-            // Apply blur to the specific region
-            const blurStrength = editorState.blurBrushStrength * 2;
+            // Normalize negative width/height
+            if (rect.width < 0) {
+              rect.x += rect.width;
+              rect.width = Math.abs(rect.width);
+            }
             
-            // Create a blurred version of just this region
-            const blurredRegionImage = applyActualBlurToRegion(
-              rect.x, rect.y, rect.width, rect.height, blurStrength
-            );
+            if (rect.height < 0) {
+              rect.y += rect.height;
+              rect.height = Math.abs(rect.height);
+            }
             
-            if (blurredRegionImage) {
-              // Add the blur rectangle to our state
-              const newBlurRectangles = [
-                ...editorState.blurRectangles,
-                {
-                  id: rectId,
-                  x: rect.x,
-                  y: rect.y,
-                  width: rect.width,
-                  height: rect.height,
-                  blur: blurStrength
-                }
-              ];
+            // Only create rectangles with meaningful dimensions
+            if (rect.width > 5 && rect.height > 5) {
+              // Remove selection rectangle
+              selectionRect.destroy();
               
+              // Create a unique ID
+              const rectId = `rect-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+              
+              // Store in normalized coordinates (0-1 range)
+              const normalizedRect = {
+                id: rectId,
+                x: (rect.x - offsetX) / imageWidth,
+                y: (rect.y - offsetY) / imageHeight,
+                width: rect.width / imageWidth,
+                height: rect.height / imageHeight,
+                blur: editorState.blurBrushStrength
+              };
+              
+              // Update state with the new rectangle
               setEditorState({
                 ...editorState,
-                blurRectangles: newBlurRectangles
+                blurRectangles: [...editorState.blurRectangles, normalizedRect]
               });
               
-              // Create rectangle to show the blur region boundary
+              // Create a rectangle for the blur region
               const blurRect = new Konva.Rect({
                 x: rect.x,
                 y: rect.y,
                 width: rect.width,
                 height: rect.height,
-                fill: 'transparent',
                 stroke: 'transparent',
-                strokeWidth: 1,
-                draggable: true,
+                strokeWidth: 0,
+                name: 'blurRect',
                 id: rectId,
-                name: 'blurRect'
+                draggable: true
               });
               
-              // Create a clipping group
+              // Create the blur effect using a clipping group
               const clipGroup = new Konva.Group({
-                clipFunc: function(ctx) {
-                  ctx.beginPath();
-                  ctx.rect(rect.x, rect.y, rect.width, rect.height);
-                  ctx.closePath();
-                },
-                id: `${rectId}-clip`
+                clip: {
+                  x: rect.x,
+                  y: rect.y,
+                  width: rect.width,
+                  height: rect.height
+                }
               });
               
-              // Create a Konva image using the blurred region
+              // Clone the original image for blurring
               const blurredImage = new Konva.Image({
-                image: blurredRegionImage,
-                x: 0,
-                y: 0,
-                width: stageRef.current ? stageRef.current.width() : 0,
-                height: stageRef.current ? stageRef.current.height() : 0,
-                id: `${rectId}-img`,
-                name: 'blurredImage',
-                listening: false
+                x: offsetX,
+                y: offsetY,
+                image: img,
+                width: imageWidth,
+                height: imageHeight,
+                name: 'blurredImage'
               });
               
-              // Add the blurred image to the clipping group
-              clipGroup.add(blurredImage);
+              // Apply blur filter
+              blurredImage.cache();
+              blurredImage.filters([Konva.Filters.Blur]);
+              blurredImage.blurRadius(editorState.blurBrushStrength);
               
-              // Add elements to blur layer
+              // Add to layers
+              clipGroup.add(blurredImage);
               blurLayer.add(clipGroup);
               blurLayer.add(blurRect);
               blurLayer.batchDraw();
               
-              // When the rectangle is moved, update the clip area as well
-              blurRect.on('dragmove', function() {
-                const newX = blurRect.x();
-                const newY = blurRect.y();
-                
-                // Update the clipping function
-                clipGroup.clipFunc(function(ctx) {
-                  ctx.beginPath();
-                  ctx.rect(newX, newY, rect.width, rect.height);
-                  ctx.closePath();
+              // Update clip on drag
+              blurRect.on('dragmove', () => {
+                // Update clip region to follow the rectangle
+                clipGroup.clip({
+                  x: blurRect.x(),
+                  y: blurRect.y(),
+                  width: blurRect.width(),
+                  height: blurRect.height()
                 });
                 
-                // Update state to reflect new position
+                // Update state with new position
                 setEditorState({
                   ...editorState,
-                  blurRectangles: editorState.blurRectangles.map(r => 
-                    r.id === rectId 
-                      ? {...r, x: newX, y: newY}
-                      : r
-                  )
+                  blurRectangles: editorState.blurRectangles.map(r => {
+                    if (r.id === rectId) {
+                      return {
+                        ...r,
+                        x: (blurRect.x() - offsetX) / imageWidth,
+                        y: (blurRect.y() - offsetY) / imageHeight
+                      };
+                    }
+                    return r;
+                  })
                 });
                 
                 blurLayer.batchDraw();
@@ -859,294 +928,354 @@ export default function ImageUploader({
                 clipGroup.destroy();
                 blurLayer.batchDraw();
               });
+            } else {
+              // If it's too small, just remove it
+              selectionRect.destroy();
             }
-          } else {
-            // If it's too small, just remove it
-            selectionRect.destroy();
-          }
+            
+            blurLayer.batchDraw();
+            selectionRect = null;
+          });
           
-          blurLayer.batchDraw();
-          selectionRect = null;
-        });
-        
-        console.log('Konva stage initialized successfully');
+        };
       } catch (error) {
         console.error('Error initializing stage:', error);
       }
-    };
-    
-    // Cleanup function
-    return () => {
-      if (stageRef.current) {
-        stageRef.current.destroy();
-        stageRef.current = null;
-      }
-    };
+    }
   }, [editingImage, editorState.brightness, editorState.contrast, editorState.blur, 
       editorState.isDrawingBlur, editorState.blurBrushStrength, editorState.blurRectangles]);
 
-  // Component for the Image Editor Modal
+  // Update the ImageEditorModal component to handle both new uploads and edits
   const ImageEditorModal = () => {
-    if (!editingImage) return null;
-    
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
-        <div className="bg-[#1A202C] p-4 rounded-lg w-full md:w-auto max-w-[90vw] max-h-[90vh] overflow-auto">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-bold text-white">Edit Image</h2>
-            <button
-              onClick={() => {
-                setEditingImage(null);
-                setEditingIndex(null);
-                setEditorState({
-                  brightness: 0,
-                  contrast: 0,
-                  blur: 0,
-                  isDrawingBlur: false,
-                  blurBrushSize: 20,
-                  blurBrushStrength: 5,
-                  blurRectangles: []
-                });
-              }}
-              className="text-gray-400 hover:text-white"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div 
+          className="editor-modal relative bg-[#171e2e] rounded-lg overflow-hidden"
+          style={{
+            width: '90vw',
+            height: '90vh',
+            maxWidth: '1200px',
+            maxHeight: '800px',
+          }}
+        >
+          {/* Close button */}
+          <button
+            className="absolute top-2 right-2 z-10 bg-[#1d2436] hover:bg-[#252c43] rounded-full p-1 text-white transition-colors"
+            onClick={() => {
+              setEditingImage(null);
+              setEditingIndex(null);
+              setTempFileToEdit(null);
+              setEditorState({
+                brightness: 0,
+                contrast: 0,
+                blur: 0,
+                isDrawingBlur: false,
+                blurBrushSize: 20,
+                blurBrushStrength: 5,
+                blurRectangles: []
+              });
+              
+              // Reset the file input
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          {/* Editor title */}
+          <div className="text-white font-semibold p-4 border-b border-gray-800 bg-[#171e2e]">
+            Edit Before Upload
           </div>
           
-          <div className="flex flex-col lg:flex-row gap-3">
-            {/* Main canvas area */}
-            <div className="flex-1 bg-[#121824] rounded-lg p-2 flex items-center justify-center">
+          {/* Editor grid - Changes to column on mobile */}
+          <div className="image-editor-grid relative" style={{ height: 'calc(100% - 120px)' }}>
+            {/* Canvas area - Fixed width on desktop, top 50% on mobile */}
+            <div 
+              className="editor-canvas-area flex items-center justify-center"
+              style={{ 
+                width: '75%', 
+                height: '100%',
+                position: 'absolute',
+                left: 0,
+                padding: '12px',
+                boxSizing: 'border-box',
+                backgroundColor: '#1a2234' // Slightly lighter background for contrast
+              }}
+            >
               <div 
                 ref={canvasRef} 
                 className="canvas-container"
                 style={{ 
                   width: '100%',
-                  minHeight: '300px', 
-                  backgroundColor: '#0a0a0a',
-                  border: '1px solid #2A3441',
-                  borderRadius: '4px',
+                  height: '100%',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderRadius: '0',
                   overflow: 'hidden',
-                  cursor: editorState.isDrawingBlur ? 'crosshair' : 'default'
+                  cursor: editorState.isDrawingBlur ? 'crosshair' : 'default',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
-              ></div>
+              >
+                {/* Enhancement animation overlay */}
+                {showEnhanceAnimation && (
+                  <div className="enhance-animation" style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0, 0, 0, 0.3)'
+                  }}>
+                    <div className="animation-container" style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '20px'
+                    }}>
+                      {/* Simple spinner */}
+                      <div className="spinner" style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '4px solid rgba(255, 255, 255, 0.3)',
+                        borderRadius: '50%',
+                        borderTop: '4px solid white',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                      
+                      {/* Text */}
+                      <div style={{
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '18px'
+                      }}>
+                        Enhancing image...
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Loading indicator for image saving */}
+                {isSaving && (
+                  <div className="saving-animation" style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0, 0, 0, 0.5)'
+                  }}>
+                    <div className="animation-container" style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '20px'
+                    }}>
+                      {/* Simple spinner */}
+                      <div className="spinner" style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '4px solid rgba(255, 255, 255, 0.3)',
+                        borderRadius: '50%',
+                        borderTop: '4px solid white',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                      
+                      {/* Text */}
+                      <div style={{
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '18px'
+                      }}>
+                        Saving image...
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
-            {/* Controls sidebar */}
-            <div className="w-full lg:w-60 flex-shrink-0">
-              <div className="p-3 bg-[#222A38] rounded-lg">
+            {/* Controls sidebar - Fixed width on desktop, bottom 50% on mobile */}
+            <div 
+              className="editor-controls-area bg-[#1f2937]"
+              style={{ 
+                width: '25%', 
+                height: '100%',
+                position: 'absolute',
+                right: 0,
+                overflowY: 'auto',
+                padding: '12px',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div className="bg-[#222A38] rounded-lg p-3 mb-3">
                 <h3 className="text-base font-medium text-white mb-3">Adjustments</h3>
                 
-                <div className="mb-3">
-                  <label className="text-sm text-gray-300 block mb-1">Brightness</label>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    value={editorState.brightness}
-                    onChange={(e) => {
-                      const newBrightness = parseInt(e.target.value);
-                      setEditorState({
-                        ...editorState,
-                        brightness: newBrightness
-                      });
-                      
-                      // Apply changes immediately to the image
-                      if (konvaImageRef.current) {
-                        konvaImageRef.current.brightness(newBrightness / 100);
-                        konvaImageRef.current.getLayer()?.batchDraw();
-                      }
-                    }}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>-100</span>
-                    <span>0</span>
-                    <span>100</span>
-                  </div>
-                </div>
-                
-                <div className="mb-3">
-                  <label className="text-sm text-gray-300 block mb-1">Contrast</label>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    value={editorState.contrast}
-                    onChange={(e) => {
-                      const newContrast = parseInt(e.target.value);
-                      setEditorState({
-                        ...editorState,
-                        contrast: newContrast
-                      });
-                      
-                      // Apply changes immediately to the image
-                      if (konvaImageRef.current) {
-                        konvaImageRef.current.contrast(1 + newContrast / 25);
-                        konvaImageRef.current.getLayer()?.batchDraw();
-                      }
-                    }}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>-100</span>
-                    <span>0</span>
-                    <span>100</span>
-                  </div>
-                </div>
-                
-                <div className="mb-3">
-                  <label className="text-sm text-gray-300 block mb-1">Global Blur</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="40"
-                    value={editorState.blur}
-                    onChange={(e) => {
-                      const newBlur = parseInt(e.target.value);
-                      setEditorState({
-                        ...editorState,
-                        blur: newBlur
-                      });
-                      
-                      // Apply changes immediately to the image
-                      if (konvaImageRef.current) {
-                        konvaImageRef.current.blurRadius(newBlur);
-                        konvaImageRef.current.getLayer()?.batchDraw();
-                      }
-                    }}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>0</span>
-                    <span>20</span>
-                    <span>40</span>
-                  </div>
-                </div>
-                
-                {/* Blur rectangle selection controls */}
-                <div className="mt-5 mb-3 border-t border-[#384152] pt-4">
-                  <div className="flex items-center mb-3">
-                    <label className="text-sm font-medium text-gray-300">Blur Areas</label>
-                    <div className="flex-1"></div>
-                    <button 
-                      className={`px-3 py-1 text-xs rounded-md ${
-                        editorState.isDrawingBlur 
-                          ? 'bg-purple-600 text-white' 
-                          : 'bg-gray-700 text-gray-300'
-                      }`}
-                      onClick={() => {
-                        setEditorState({
-                          ...editorState,
-                          isDrawingBlur: !editorState.isDrawingBlur
-                        });
-                      }}
-                    >
-                      {editorState.isDrawingBlur ? 'Drawing Mode' : 'Select Mode'}
-                    </button>
-                  </div>
-                  
-                  <div className="mb-3">
-                    <div className="flex justify-between">
-                      <label className="text-xs text-gray-400 block mb-1">Blur Strength</label>
-                      <span className="text-xs text-gray-500">{editorState.blurBrushStrength}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="20"
-                      value={editorState.blurBrushStrength}
-                      onChange={(e) => {
-                        setEditorState({
-                          ...editorState,
-                          blurBrushStrength: parseInt(e.target.value)
-                        });
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div className="text-xs text-gray-500 italic mt-1 mb-3">
-                    <p>Click and drag to draw blur regions</p>
-                    <p>Double-click a region to remove it</p>
-                  </div>
-                  
-                  {editorState.blurRectangles.length > 0 && (
-                    <div className="mb-3">
-                      <button
-                        onClick={() => {
-                          setEditorState({
-                            ...editorState,
-                            blurRectangles: []
-                          });
-                          
-                          // Clear all blur shapes
-                          if (blurLayerRef.current) {
-                            const blurRects = blurLayerRef.current.find('.blurRect');
-                            blurRects.forEach(rect => rect.destroy());
-                            
-                            const blurredImages = blurLayerRef.current.find('.blurredImage');
-                            blurredImages.forEach(img => img.destroy());
-                            
-                            blurLayerRef.current.batchDraw();
-                          }
-                        }}
-                        className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-300 px-2 py-1 rounded-md text-xs mt-2"
-                      >
-                        Clear All Blur Regions ({editorState.blurRectangles.length})
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex flex-col gap-2">
+                {/* Replace brightness, contrast and blur sliders with a single enhance button */}
+                <div className="mb-4">
                   <button
-                    onClick={saveEditedImage}
-                    disabled={isUploading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md disabled:opacity-50"
+                    type="button"
+                    onClick={enhanceImage}
+                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium px-4 py-2 rounded-md hover:from-blue-600 hover:to-purple-700 transition-all"
                   >
-                    {isUploading ? 'Saving...' : 'Save Changes'}
+                    Enhance Image
                   </button>
-                  
-                  <button
+                  <p className="text-xs text-gray-400 mt-2 text-center">
+                    Increase Lighting in image. Click reset if needed
+                  </p>
+                </div>
+              </div>
+              
+              {/* Blur controls */}
+              <div className="bg-[#222A38] rounded-lg p-3 mb-3">
+                <div className="flex items-center mb-3">
+                  <label className="text-sm font-medium text-gray-300">Blur Areas</label>
+                  <div className="flex-1"></div>
+                  <button 
+                    type="button"
+                    className={`px-3 py-1 text-xs rounded-md ${
+                      editorState.isDrawingBlur 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-gray-700 text-gray-300'
+                    }`}
                     onClick={() => {
-                      // Reset all adjustments
                       setEditorState({
-                        brightness: 0,
-                        contrast: 0,
-                        blur: 0,
-                        isDrawingBlur: false,
-                        blurBrushSize: 20,
-                        blurBrushStrength: 5,
+                        ...editorState,
+                        isDrawingBlur: !editorState.isDrawingBlur
+                      });
+                    }}
+                  >
+                    {editorState.isDrawingBlur ? 'Drawing Mode' : 'Select Mode'}
+                  </button>
+                </div>
+                
+                <div className="mb-3">
+                  <div className="flex justify-between">
+                    <label className="text-xs text-gray-400 block mb-1">Blur Strength</label>
+                    <span className="text-xs text-gray-500">{editorState.blurBrushStrength}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={editorState.blurBrushStrength}
+                    onChange={(e) => {
+                      setEditorState({
+                        ...editorState,
+                        blurBrushStrength: parseInt(e.target.value)
+                      });
+                    }}
+                    className="w-full range-slider"
+                    style={{
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                      height: '10px',
+                      background: 'linear-gradient(to right, #4488ff 0%, #4488ff ' + 
+                        (editorState.blurBrushStrength / 20 * 100) + 
+                        '%, #374151 ' + 
+                        (editorState.blurBrushStrength / 20 * 100) + 
+                        '%, #374151 100%)',
+                      borderRadius: '5px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+                
+                <div className="text-xs text-gray-500 italic mt-1 mb-3">
+                  <p>Click and drag to draw blur regions</p>
+                  <p>Double-click a region to remove it</p>
+                </div>
+                
+                {editorState.blurRectangles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditorState({
+                        ...editorState,
                         blurRectangles: []
                       });
                       
-                      // Reset image if it exists
-                      if (konvaImageRef.current) {
-                        konvaImageRef.current.brightness(0);
-                        konvaImageRef.current.contrast(1);
-                        konvaImageRef.current.blurRadius(0);
-                        konvaImageRef.current.getLayer()?.batchDraw();
-                      }
-                      
-                      // Clear all blur shapes
+                      // Remove all blur rectangles from the layer
                       if (blurLayerRef.current) {
-                        const blurRects = blurLayerRef.current.find('.blurRect');
-                        blurRects.forEach(rect => rect.destroy());
-                        
-                        const blurredImages = blurLayerRef.current.find('.blurredImage');
-                        blurredImages.forEach(img => img.destroy());
-                        
+                        blurLayerRef.current.destroyChildren();
                         blurLayerRef.current.batchDraw();
                       }
                     }}
-                    className="bg-transparent border border-[#2A3441] text-gray-300 hover:bg-[#2A3441] px-4 py-2 rounded-md text-sm"
+                    className="w-full text-xs bg-red-800 hover:bg-red-700 text-white px-3 py-2 rounded-md"
                   >
-                    Reset
+                    Clear All Blur Regions
                   </button>
-                </div>
+                )}
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex flex-col space-y-3">
+                <button
+                  type="button"
+                  onClick={saveEditedImage}
+                  disabled={isSaving}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md transition-colors disabled:opacity-70 flex items-center justify-center"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Saving image...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditorState({
+                      brightness: 0,
+                      contrast: 0,
+                      blur: 0,
+                      isDrawingBlur: false,
+                      blurBrushSize: 20,
+                      blurBrushStrength: 5,
+                      blurRectangles: []
+                    });
+                    
+                    // Reset the image to its original state
+                    if (konvaImageRef.current) {
+                      konvaImageRef.current.brightness(0);
+                      konvaImageRef.current.contrast(1);
+                      konvaImageRef.current.blurRadius(0);
+                      konvaImageRef.current.getLayer()?.batchDraw();
+                    }
+                    
+                    // Clear blur rectangles
+                    if (blurLayerRef.current) {
+                      blurLayerRef.current.destroyChildren();
+                      blurLayerRef.current.batchDraw();
+                    }
+                  }}
+                  disabled={isSaving}
+                  className="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+                >
+                  Reset
+                </button>
               </div>
             </div>
           </div>
@@ -1156,9 +1285,25 @@ export default function ImageUploader({
   };
 
   // Function to handle image edit
-  const handleEditClick = (index: number) => {
-    setEditingImage(displayImages[index]);
-    setEditingIndex(index);
+  const handleEditClick = (index: number, e: React.MouseEvent) => {
+    // Prevent the event from bubbling up to parent elements (especially form)
+    // but don't prevent default actions on the button itself
+    e.stopPropagation();
+    
+    try {
+      // Create a new object URL or use the existing image URL
+      const imageURL = displayImages[index];
+      console.log('Opening editor for image:', imageURL);
+      
+      // Set editing state
+      setEditingImage(imageURL);
+      setEditingIndex(index);
+      
+      // For existing images, we don't need to set tempFileToEdit
+      // as we'll be fetching the image directly from the URL
+    } catch (error) {
+      console.error('💥 Error handling image edit:', error);
+    }
   };
 
   // Function to apply localized blur to specific regions
@@ -1249,8 +1394,145 @@ export default function ImageUploader({
     return result;
   }
 
+  // Add function to handle image removal
+  const handleRemoveImage = async (index: number, e: React.MouseEvent) => {
+    // Prevent the event from bubbling up to parent elements (especially form)
+    // but don't prevent default actions on the button itself
+    e.stopPropagation();
+    
+    try {
+      setIsUploading(true);
+      
+      // Get the URL of the image to remove
+      const imageUrl = displayImages[index];
+      console.log('🗑️ Removing image:', imageUrl);
+      
+      if (onImagesUploaded) {
+        // First attempt to delete from storage
+        const deleteResult = await deleteImageFromStorage(imageUrl);
+        console.log(`${deleteResult ? '✅' : '❌'} Deletion result:`, deleteResult);
+        
+        // Update the state by filtering out this image
+        const newUrls = displayImages.filter((_, i) => i !== index);
+        onImagesUploaded(newUrls);
+        
+        console.log('✅ Image removed from list');
+      }
+    } catch (error) {
+      console.error('💥 Error removing image:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Add CSS animation styles to document
+  useEffect(() => {
+    // Create a style element
+    const styleElement = document.createElement('style');
+    
+    // Define animations
+    styleElement.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Improved range slider styling */
+      input[type=range].range-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        transition: all 0.2s;
+      }
+      
+      input[type=range].range-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+      }
+      
+      input[type=range].range-slider::-webkit-slider-thumb:active {
+        transform: scale(1.2);
+        background: #f0f0f0;
+      }
+      
+      input[type=range].range-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        border: none;
+        transition: all 0.2s;
+      }
+      
+      input[type=range].range-slider::-moz-range-thumb:hover {
+        transform: scale(1.1);
+      }
+      
+      input[type=range].range-slider::-moz-range-thumb:active {
+        transform: scale(1.2);
+        background: #f0f0f0;
+      }
+      
+      /* Mobile-specific styles */
+      @media (max-width: 768px) {
+        .editor-modal {
+          width: 100% !important;
+          height: 100% !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          border-radius: 0 !important;
+          margin: 0 !important;
+        }
+        
+        .image-editor-grid {
+          flex-direction: column !important;
+        }
+        
+        .editor-canvas-area {
+          width: 100% !important;
+          height: 50% !important;
+          position: relative !important;
+          left: auto !important;
+        }
+        
+        .editor-controls-area {
+          width: 100% !important;
+          height: 50% !important;
+          position: relative !important;
+          right: auto !important;
+          bottom: 0 !important;
+        }
+      }
+    `;
+    
+    // Add the style element to the head
+    document.head.appendChild(styleElement);
+    
+    // Clean up function
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
   return (
-    <div className="w-full">
+    <div 
+      className="w-full" 
+      onClick={(e) => {
+        // Only stop propagation, don't prevent default actions
+        // This allows file inputs to work but prevents form submission
+        if (onClick) {
+          onClick(e);
+        } else {
+          e.stopPropagation();
+        }
+      }}
+    >
       {/* Image editor modal */}
       {editingImage && <ImageEditorModal />}
       
@@ -1266,16 +1548,25 @@ export default function ImageUploader({
               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleEditClick(index)}
+                    type="button"
+                    onClick={(e) => handleEditClick(index, e)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm"
                   >
                     Edit
                   </button>
                   <button
-                    onClick={() => handleReplaceClick(index)}
+                    type="button"
+                    onClick={(e) => handleReplaceClick(index, e)}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md text-sm"
                   >
                     Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleRemoveImage(index, e)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
+                  >
+                    Remove
                   </button>
                 </div>
               </div>
@@ -1290,11 +1581,14 @@ export default function ImageUploader({
                   ? 'border-purple-500 bg-purple-500/10 scale-105' 
                   : 'border-[#2A3441] hover:border-purple-500/50 hover:bg-[#1D2839]/50'
               }`}
-              onClick={handleAreaClick}
+              onClick={(e) => handleAreaClick(e)}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              role="button"
+              tabIndex={0}
+              aria-label="Upload image"
             >
               <div className="p-4 flex flex-col items-center">
                 <svg className="w-8 h-8 text-purple-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1318,11 +1612,14 @@ export default function ImageUploader({
               ? 'border-purple-500 bg-purple-500/10 scale-105' 
               : 'border-[#2A3441] hover:border-purple-500/50 hover:bg-[#1D2839]/50'
           }`}
-          onClick={handleAreaClick}
+          onClick={(e) => handleAreaClick(e)}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          role="button"
+          tabIndex={0}
+          aria-label="Upload image"
         >
           <div className="p-6 flex flex-col items-center">
             <svg className="w-16 h-16 text-purple-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1347,7 +1644,9 @@ export default function ImageUploader({
         onChange={handleFileChange}
         accept="image/*"
         className="hidden"
+        // Ensure this doesn't prevent file selection
+        onClick={(e) => e.stopPropagation()}
       />
     </div>
   );
-} 
+}

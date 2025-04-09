@@ -1,49 +1,79 @@
+"use client";
+
+import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import { useState, useEffect, useRef } from "react";
+
 export default function CTASection() {
+  const { t } = useTranslation();
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
-    <section className="py-20 px-4 relative z-10">
-      {/* Remove the additional background highlight but keep the glass effect */}
-      
+    <section 
+      ref={sectionRef}
+      className="bg-white py-10 sm:py-12 md:py-16 px-4"
+    >
       <div className="max-w-6xl mx-auto">
-        <div className="bg-[#0c1324]/80 border border-[#1c2a47] rounded-2xl p-8 md:p-12 overflow-hidden shadow-lg">
-          {/* Inner glow effect */}
-          <div className="absolute inset-0 overflow-hidden -z-10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-1/2 bg-blue-500/5 blur-[100px]"></div>
-          </div>
+        <div 
+          className={`relative overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 sm:p-8 md:p-12 shadow-lg transition-all duration-1000 transform ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+          }`}
+        >
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-200/20 rounded-full blur-3xl -ml-32 -mb-32"></div>
           
-          <div className="flex flex-col lg:flex-row items-center">
+          <div className="flex flex-col lg:flex-row items-center relative z-10">
             <div className="w-full lg:w-2/3 lg:pr-12 mb-8 lg:mb-0">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Ready to Transform Your Real Estate Marketing?</h2>
-              <p className="text-xl text-gray-300 mb-6">
-                Join thousands of real estate professionals who are saving time and winning more listings with our AI-powered brochure maker.
-              </p>
-              
-              {/* Trust indicators */}
-              <div className="flex flex-wrap items-center gap-6 mt-8">
-                <span className="text-sm text-gray-400">Trusted by:</span>
-                <div className="flex space-x-8">
-                  <img src="/logos/remax.svg" alt="RE/MAX" className="h-8 opacity-70" />
-                  <img src="/logos/century21.svg" alt="Century 21" className="h-8 opacity-70" />
-                  <img src="/logos/keller-williams.svg" alt="Keller Williams" className="h-8 opacity-70" />
-                </div>
+              <div className={`transition-all duration-700 delay-300 transform ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-4 sm:mb-6">
+                  {t("cta.title", "Erfahren Sie, wie ExposeFlow Ihre Exposé-Erstellung optimiert")}
+                </h2>
+                <p className="text-lg text-gray-700 mb-6">
+                  {t("cta.description", "Erleben Sie in einer persönlichen Demo, wie unser KI-gestützter Broschürenersteller Ihren Workflow revolutionieren kann. Sparen Sie wertvolle Zeit und erstellen Sie hochwertige Exposés.")}
+                </p>
               </div>
             </div>
-            
-            <div className="w-full lg:w-1/3">
-              <div className="bg-[#111b33] rounded-xl p-6 border border-[#1c2a47]">
-                <h3 className="text-xl font-bold text-white mb-4">Start Creating Today</h3>
-                <p className="text-gray-300 mb-6">Sign up in 60 seconds and create your first brochure for free.</p>
-                
-                <a 
-                  href="/dashboard" 
-                  className="group relative inline-flex w-full justify-center items-center overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-700 py-4 px-6 transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg focus:outline-none"
-                >
-                  <span className="absolute right-0 -mt-12 h-32 w-8 translate-x-12 rotate-12 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40"></span>
-                  <span className="relative flex items-center text-white font-medium">
-                    Get Started — It's Free
-                  </span>
-                </a>
-                
-                <p className="text-gray-400 text-sm mt-4 text-center">No credit card required</p>
+
+            <div className={`w-full lg:w-1/3 transition-all duration-700 delay-500 transform ${
+              isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'
+            }`}>
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">
+                  {t("cta.bookDemo", "Demo vereinbaren")}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {t("cta.bookDemoDescription", "Buchen Sie einen 30-minütigen Termin mit unserem Team.")}
+                </p>
+
+                <Link href="/demo-buchen">
+                  <button className="w-full bg-[#5169FE] hover:bg-[#4058e0] text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-blue-200 border border-[#5169FE] hover:scale-[1.03]">
+                    {t("cta.scheduleButton", "Termin aussuchen")}
+                  </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -51,4 +81,4 @@ export default function CTASection() {
       </div>
     </section>
   );
-} 
+}

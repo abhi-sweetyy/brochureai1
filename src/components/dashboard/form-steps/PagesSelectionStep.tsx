@@ -1,5 +1,11 @@
-import { Checkbox, FormControlLabel, FormGroup, Paper, Typography } from '@mui/material';
-import React from 'react';
+import {
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  Paper,
+  Typography,
+} from "@mui/material";
+import React from "react";
 
 export interface PageOption {
   id: string;
@@ -9,51 +15,51 @@ export interface PageOption {
 }
 
 export const availablePages: PageOption[] = [
-  { 
-    id: 'projectOverview', 
-    label: 'Project Overview', 
+  {
+    id: "projectOverview",
+    label: "Project Overview",
     requiredImages: 1,
-    placeholderKeys: ['{{image1}}']
+    placeholderKeys: ["{{image1}}"],
   },
-  { 
-    id: 'buildingLayout', 
-    label: 'Building Layout Plan', 
+  {
+    id: "buildingLayout",
+    label: "Building Layout Plan",
     requiredImages: 1,
-    placeholderKeys: ['{{image2}}']
+    placeholderKeys: ["{{image2}}"],
   },
-  { 
-    id: 'description', 
-    label: 'Description', 
-    requiredImages: 0 
+  {
+    id: "description",
+    label: "Description",
+    requiredImages: 0,
   },
-  { 
-    id: 'exteriorPhotos', 
-    label: 'Exterior Photos', 
+  {
+    id: "exteriorPhotos",
+    label: "Exterior Photos",
     requiredImages: 2,
-    placeholderKeys: ['{{image3}}', '{{image4}}']
+    placeholderKeys: ["{{image3}}", "{{image4}}"],
   },
-  { 
-    id: 'interiorPhotos', 
-    label: 'Interior Photos', 
+  {
+    id: "interiorPhotos",
+    label: "Interior Photos",
     requiredImages: 2,
-    placeholderKeys: ['{{image5}}', '{{image6}}']
+    placeholderKeys: ["{{image5}}", "{{image6}}"],
   },
-  { 
-    id: 'floorPlan', 
-    label: 'Floor Plan', 
+  {
+    id: "floorPlan",
+    label: "Floor Plan",
     requiredImages: 1,
-    placeholderKeys: ['{{image7}}']
+    placeholderKeys: ["{{image7}}"],
   },
-  { 
-    id: 'energyCertificate', 
-    label: 'Excerpt from energy certificate', 
+  {
+    id: "energyCertificate",
+    label: "Excerpt from energy certificate",
     requiredImages: 2,
-    placeholderKeys: ['{{image8}}', '{{image9}}']
+    placeholderKeys: ["{{image8}}", "{{image9}}"],
   },
-  { 
-    id: 'termsConditions', 
-    label: 'Terms & Conditions', 
-    requiredImages: 0 
+  {
+    id: "termsConditions",
+    label: "Terms & Conditions",
+    requiredImages: 0,
   },
 ];
 
@@ -62,24 +68,30 @@ interface PagesSelectionStepProps {
   onPagesChange: (pages: Record<string, boolean>) => void;
 }
 
-export const PagesSelectionStep: React.FC<PagesSelectionStepProps> = ({ selectedPages, onPagesChange }) => {
+export const PagesSelectionStep: React.FC<PagesSelectionStepProps> = ({
+  selectedPages,
+  onPagesChange,
+}) => {
   const handlePageChange = (pageId: string, checked: boolean) => {
     const newSelectedPages = {
       ...selectedPages,
-      [pageId]: checked
+      [pageId]: checked,
     };
     onPagesChange(newSelectedPages);
   };
 
   return (
-    <Paper sx={{ p: 3, bgcolor: '#111b33', borderColor: '#1c2a47' }}>
-      <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+    <Paper
+      sx={{ p: 3, bgcolor: "white", borderColor: "grey.200", boxShadow: 1 }}
+    >
+      <Typography variant="h6" gutterBottom sx={{ color: "#171717" }}>
         Select Pages to Include
       </Typography>
-      <Typography variant="body2" sx={{ color: '#8491A5', mb: 2 }}>
-        Choose the pages you want to include in your listing. The number in brackets indicates required images for each page.
+      <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+        Choose the pages you want to include in your listing. The number in
+        brackets indicates required images for each page.
       </Typography>
-      
+
       <FormGroup>
         {availablePages.map((page) => (
           <FormControlLabel
@@ -89,16 +101,16 @@ export const PagesSelectionStep: React.FC<PagesSelectionStepProps> = ({ selected
                 checked={selectedPages[page.id] ?? true}
                 onChange={(e) => handlePageChange(page.id, e.target.checked)}
                 sx={{
-                  color: '#8491A5',
-                  '&.Mui-checked': {
-                    color: '#3b82f6',
+                  color: "grey.500",
+                  "&.Mui-checked": {
+                    color: "#5169FE",
                   },
                 }}
               />
             }
             label={
-              <Typography sx={{ color: 'white' }}>
-                {`${page.label} ${page.requiredImages > 0 ? `(${page.requiredImages} image${page.requiredImages > 1 ? 's' : ''})` : ''}`}
+              <Typography sx={{ color: "#171717" }}>
+                {`${page.label} ${page.requiredImages > 0 ? `(${page.requiredImages} image${page.requiredImages > 1 ? "s" : ""})` : ""}`}
               </Typography>
             }
           />
@@ -108,4 +120,4 @@ export const PagesSelectionStep: React.FC<PagesSelectionStepProps> = ({ selected
   );
 };
 
-export default PagesSelectionStep; 
+export default PagesSelectionStep;

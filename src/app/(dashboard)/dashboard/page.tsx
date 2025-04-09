@@ -22,6 +22,7 @@ import { extractTitle, extractPrice, extractSpace, extractYear } from '@/utils/e
 import mammoth from 'mammoth';
 import { toast } from 'react-hot-toast';
 import { verifyApiConnection } from '@/utils/test-api';
+import ImageUploader from '@/components/ImageUploader';
 
 // Define the steps for the form
 const FORM_STEPS = [
@@ -175,6 +176,23 @@ const Dashboard = () => {
     return initialPages;
   });
 
+  // Add this new state for onboarding
+  const [isOnboarded, setIsOnboarded] = useState(false);
+  const [onboardingData, setOnboardingData] = useState({
+    logo: '',
+    brokerPhoto: '',
+    phoneNumber: '',
+    emailAddress: '',
+    websiteName: ''
+  });
+  const [onboardingErrors, setOnboardingErrors] = useState({
+    logo: false,
+    brokerPhoto: false,
+    phoneNumber: false,
+    emailAddress: false,
+    websiteName: false
+  });
+
   // Protect the dashboard route
   useEffect(() => {
     if (!session && !isLoading) {
@@ -266,13 +284,15 @@ const Dashboard = () => {
   const fetchCredits = async () => {
     if (session?.user) {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('credits')
         .eq('id', session.user.id)
         .single();
       
       if (data) {
         setCredits(data.credits);
+      } else if (error) {
+        console.error('Error fetching credits:', error);
       }
     }
   };
@@ -286,7 +306,7 @@ const Dashboard = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'users',
+          table: 'profiles',
           filter: `id=eq.${session?.user?.id}`,
         },
         (payload: any) => {
@@ -319,6 +339,49 @@ const Dashboard = () => {
     fetchTemplates();
     fetchCredits();
   }, [supabase, session]);
+
+  // Fetch user profile information and pre-fill form fields
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (session?.user?.id) {
+        console.log("Fetching user profile for dashboard");
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+        
+        if (data && data.is_onboarded) {
+          console.log("Found user profile data:", data);
+          
+          // Pre-populate contact information from user profile
+          setPlaceholders(prev => ({
+            ...prev,
+            phone_number: data.phone_number || '',
+            email_address: data.email_address || '',
+            website_name: data.website_name || '',
+            name_brokerfirm: data.company_name || '',
+            address_brokerfirm: data.address || ''
+          }));
+          
+          // Pre-populate logo and broker photo
+          if (data.logo_url) {
+            setLogoUrl(data.logo_url);
+          }
+          
+          if (data.broker_photo_url) {
+            const newImages = { ...uploadedImages };
+            newImages['{{agent}}'] = data.broker_photo_url;
+            setUploadedImages(newImages);
+          }
+        } else {
+          console.log("No user profile found or not onboarded");
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [session, supabase]);
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -470,6 +533,13 @@ const Dashboard = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Look for any active image editors and don't proceed if found
+    const activeImageEditor = document.querySelector('.fixed.inset-0.z-50.flex.items-center.justify-center.bg-black.bg-opacity-80');
+    if (activeImageEditor) {
+      console.log('Image editor is active, not proceeding with form submission');
+      return;
+    }
+    
     // If we're not on the final review step, just navigate to the next step
     if (currentStep < FORM_STEPS.length - 1) {
       goToNextStep();
@@ -604,6 +674,160 @@ const Dashboard = () => {
     }));
   };
 
+  // Check if user is onboarded
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      if (session?.user?.id) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+        
+        if (data && data.is_onboarded) {
+          setIsOnboarded(true);
+          setOnboardingData({
+            logo: data.logo_url || '',
+            brokerPhoto: data.broker_photo_url || '',
+            phoneNumber: data.phone_number || '',
+            emailAddress: data.email_address || '',
+            websiteName: data.website_name || ''
+          });
+        } else {
+          // Redirect to account page for onboarding
+          router.push('/account');
+        }
+      }
+    };
+    
+    checkOnboardingStatus();
+  }, [session, supabase, router]);
+
+  // Add this function to handle onboarding form submission
+  const handleOnboardingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate all fields
+    const errors = {
+      logo: !onboardingData.logo,
+      brokerPhoto: !onboardingData.brokerPhoto,
+      phoneNumber: !onboardingData.phoneNumber,
+      emailAddress: !onboardingData.emailAddress || !/^\S+@\S+\.\S+$/.test(onboardingData.emailAddress),
+      websiteName: !onboardingData.websiteName
+    };
+    
+    setOnboardingErrors(errors);
+    
+    // Check if any errors exist
+    if (Object.values(errors).some(error => error)) {
+      toast.error("Please fill in all required fields correctly");
+      return;
+    }
+    
+    // Show loading state
+    toast.loading("Saving your information...", { id: "onboarding" });
+    
+    try {
+      // Save the onboarding data
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: session?.user?.id,
+          logo_url: onboardingData.logo,
+          broker_photo_url: onboardingData.brokerPhoto,
+          phone_number: onboardingData.phoneNumber,
+          email_address: onboardingData.emailAddress,
+          website_name: onboardingData.websiteName,
+          is_onboarded: true
+        });
+      
+      if (error) {
+        toast.error("Failed to save your information", { id: "onboarding" });
+        console.error("Onboarding error:", error);
+        return;
+      }
+      
+      // Update state
+      setIsOnboarded(true);
+      toast.success("Information saved successfully", { id: "onboarding" });
+      
+      // Also update global placeholders with this information
+      setPlaceholders(prev => ({
+        ...prev,
+        phone_number: onboardingData.phoneNumber,
+        email_address: onboardingData.emailAddress,
+        website_name: onboardingData.websiteName
+      }));
+      
+      // Update logo and broker photo
+      setLogoUrl(onboardingData.logo);
+      const newImages = { ...uploadedImages };
+      newImages['{{agent}}'] = onboardingData.brokerPhoto;
+      setUploadedImages(newImages);
+      
+    } catch (error) {
+      console.error("Error during onboarding:", error);
+      toast.error("An unexpected error occurred", { id: "onboarding" });
+    }
+  };
+
+  // Add these handlers for file uploads in onboarding
+  const handleLogoUploadForOnboarding = (urls: string[]) => {
+    if (urls.length > 0) {
+      setOnboardingData(prev => ({ ...prev, logo: urls[0] }));
+      setOnboardingErrors(prev => ({ ...prev, logo: false }));
+    }
+  };
+
+  const handleBrokerPhotoUploadForOnboarding = (urls: string[]) => {
+    if (urls.length > 0) {
+      setOnboardingData(prev => ({ ...prev, brokerPhoto: urls[0] }));
+      setOnboardingErrors(prev => ({ ...prev, brokerPhoto: false }));
+    }
+  };
+
+  // Custom upload function for onboarding that uses the userinfo bucket
+  const uploadOnboardingImage = async (file: File): Promise<string> => {
+    try {
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const fileName = `${timestamp}_${randomString}.${fileExt}`;
+      const filePath = `${session?.user?.id}/${fileName}`;
+      
+      // Upload to the userinfo bucket
+      const { error: uploadError } = await supabase.storage
+        .from('userinfo')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('userinfo')
+        .getPublicUrl(filePath);
+      
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error in uploadOnboardingImage:', error);
+      throw error;
+    }
+  };
+
+  // Add this handler for text input changes in onboarding
+  const handleOnboardingInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setOnboardingData(prev => ({ ...prev, [name]: value }));
+    setOnboardingErrors(prev => ({ ...prev, [name]: false }));
+  };
+
   // Render the current step
   const renderStep = () => {
     switch (currentStep) {
@@ -657,7 +881,15 @@ const Dashboard = () => {
           <ContactInfoStep 
             placeholders={placeholders} 
             handleInputChange={handleInputChange}
-            autoFilledFields={autoFilledFields}
+            autoFilledFields={[
+              ...autoFilledFields,
+              // Add contact fields that should be considered pre-filled
+              'phone_number', 
+              'email_address', 
+              'website_name',
+              'name_brokerfirm',
+              'address_brokerfirm'
+            ]}
           />
         );
       case 7:
@@ -675,50 +907,105 @@ const Dashboard = () => {
     }
   };
 
+  // Add this function to ensure the profile exists
+  const ensureProfileExists = async () => {
+    if (session?.user) {
+      // Check if profile exists
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .single();
+      
+      // If no profile exists, create one
+      if (error && error.code === 'PGRST116') { // No rows returned error
+        console.log('Creating new profile for user');
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: session.user.id,
+            credits: 0 // Start with 0 credits
+          });
+        
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+        }
+      }
+    }
+  };
+
+  // Call this function when loading the dashboard
+  useEffect(() => {
+    if (session?.user) {
+      ensureProfileExists().then(() => {
+        fetchCredits();
+      });
+    }
+  }, [session]);
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#070c1b]">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center">
           <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mb-4"></div>
-          <p className="text-white">Loading your dashboard...</p>
+          <p className="text-gray-800">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
+  // If not onboarded, show loading state while redirecting
+  if (!isOnboarded && session) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="flex flex-col items-center">
+          <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-800">Setting up your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular dashboard if onboarded
   return (
-    <div className="min-h-screen bg-[#070c1b] text-white">
+    <div className="min-h-screen">
       {/* Background elements matching homepage */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[100px]"></div>
       </div>
       
-      <DashboardHeader credits={credits} />
-      
-      <div className="container mx-auto px-4 py-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white">My Brochures</h1>
-            <p className="text-gray-400 mt-2">Create and manage your real estate brochures</p>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-wrap justify-between items-center mb-8">
+          <div className="mr-auto">
+            <h1 className="text-3xl font-bold text-gray-900">My Brochures</h1>
+            <p className="text-gray-600 mt-2">Create and manage your real estate brochures</p>
           </div>
           
-          <button
-            onClick={() => router.push('/dashboard/new')}
-            className="group relative inline-flex items-center overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-3 transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg focus:outline-none"
-          >
-            <span className="absolute right-0 -mt-12 h-32 w-8 translate-x-12 rotate-12 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40"></span>
-            <span className="relative flex items-center text-white font-medium">
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+          <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+            {/* Credits Display */}
+            <div className="flex items-center px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+              <svg className="w-4 h-4 mr-1.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Create New Brochure
-            </span>
-          </button>
+              <span className="font-medium text-gray-900 text-sm sm:text-base whitespace-nowrap">{credits ?? 0} Credits</span>
+            </div>
+            
+            {/* Buy Credits Button */}
+            <button
+              onClick={() => router.push('/dashboard/billing')}
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center shadow-sm text-sm sm:text-base"
+            >
+              <svg className="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span className="whitespace-nowrap">Buy Credits</span>
+            </button>
+          </div>
         </div>
         
         {/* Project Creation Form */}
-        <div className="bg-[#0c1324] border border-[#1c2a47] rounded-xl shadow-xl p-8 mb-12">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8 mb-12">
           <div className="flex items-center mb-8">
             <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center mr-4">
               <svg className="w-5 h-5 text-white" viewBox="0 0 20 20" fill="currentColor">
@@ -726,7 +1013,7 @@ const Dashboard = () => {
                 <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-white">Create New Brochure</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">Create New Brochure</h2>
           </div>
           
           {/* Form Steps Progress */}
@@ -737,18 +1024,18 @@ const Dashboard = () => {
                   key={index}
                   className={`flex flex-col items-center min-w-[100px] ${
                     index === currentStep 
-                      ? 'text-blue-500' 
+                      ? 'text-blue-600' 
                       : index < currentStep 
-                        ? 'text-blue-400' 
-                        : 'text-gray-500'
+                        ? 'text-blue-500' 
+                        : 'text-gray-400'
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${
                     index === currentStep 
-                      ? 'bg-blue-500 text-white' 
+                      ? 'bg-blue-600 text-white' 
                       : index < currentStep 
-                        ? 'bg-blue-500/20 text-blue-500' 
-                        : 'bg-gray-800 text-gray-500'
+                        ? 'bg-blue-100 text-blue-600' 
+                        : 'bg-gray-100 text-gray-400'
                   }`}>
                     {index + 1}
                   </div>
@@ -756,7 +1043,7 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
-            <div className="w-full bg-gray-800 h-1 mt-4 rounded-full overflow-hidden">
+            <div className="w-full bg-gray-100 h-1 mt-4 rounded-full overflow-hidden">
               <div 
                 className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / (FORM_STEPS.length - 1)) * 100}%` }}
@@ -765,7 +1052,7 @@ const Dashboard = () => {
           </div>
           
           {error && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-lg mb-6 flex items-start">
+            <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg mb-6 flex items-start">
               <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
@@ -774,7 +1061,7 @@ const Dashboard = () => {
           )}
           
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-[#111b33] border border-[#1c2a47] rounded-lg p-6">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
               {renderStep()}
             </div>
             
@@ -783,7 +1070,7 @@ const Dashboard = () => {
                 type="button"
                 onClick={goToPreviousStep}
                 disabled={currentStep === 0}
-                className="px-6 py-3 bg-[#111b33] text-white rounded-lg border border-[#1c2a47] hover:bg-[#192338] transition-colors disabled:opacity-50 disabled:hover:bg-[#111b33] flex items-center"
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:hover:bg-gray-100 flex items-center"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -837,22 +1124,22 @@ const Dashboard = () => {
         </div>
         
         {/* Projects List */}
-        <div className="bg-[#0c1324] border border-[#1c2a47] rounded-xl shadow-xl p-8">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8">
           <div className="flex items-center mb-8">
             <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center mr-4">
               <svg className="w-5 h-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-white">Your Brochures</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">Your Brochures</h2>
           </div>
           
           {projects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-[#111b33] rounded-lg border border-dashed border-[#1c2a47]">
-              <svg className="w-16 h-16 text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
               </svg>
-              <p className="text-gray-400 text-lg mb-2">You haven't created any brochures yet</p>
+              <p className="text-gray-600 text-lg mb-2">You haven't created any brochures yet</p>
               <p className="text-gray-500 mb-6 max-w-md">Create your first professional real estate brochure with our easy-to-use AI templates</p>
               <button
                 onClick={() => router.push('/dashboard/new')}
@@ -868,24 +1155,24 @@ const Dashboard = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {projects.map(project => (
                 <Link 
                   href={`/project/${project.id}`} 
                   key={project.id}
-                  className="group bg-[#111b33] border border-[#1c2a47] rounded-xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 flex flex-col"
+                  className="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:border-blue-300 transition-all duration-300 hover:shadow-md hover:shadow-blue-100 flex flex-col"
                 >
-                  <div className="h-40 bg-gradient-to-r from-blue-900/30 to-indigo-900/30 relative">
+                  <div className="h-40 bg-gradient-to-r from-blue-50 to-indigo-50 relative">
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <svg className="w-16 h-16 text-blue-500/20" viewBox="0 0 24 24" fill="currentColor">
+                      <svg className="w-16 h-16 text-blue-100" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/>
                       </svg>
                     </div>
                   </div>
                   
                   <div className="p-6 flex-grow">
-                    <h3 className="font-medium text-lg text-white mb-2 group-hover:text-blue-400 transition-colors">{project.title}</h3>
-                    <p className="text-gray-400 text-sm mb-2">{project.address}</p>
+                    <h3 className="font-medium text-lg text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">{project.title}</h3>
+                    <p className="text-gray-500 text-sm mb-2">{project.address}</p>
                   </div>
                 </Link>
               ))}

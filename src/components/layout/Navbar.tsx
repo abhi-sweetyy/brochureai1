@@ -1,100 +1,283 @@
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/app/contexts/LanguageContext"; // Adjust path as needed
 
 export default function Navbar() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useTranslation();
+  const { currentLanguage, changeLanguage } = useLanguage();
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Function to scroll to sections
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+    setIsMobileMenuOpen(false);
+  };
+
+  // Language options with proper flag image paths
+  const languages = [
+    { code: "en", flag: "/flags/en.png" },
+    { code: "de", flag: "/flags/de.png" },
+  ];
+
+  // Change language function
+  const handleLanguageChange = (langCode: string) => {
+    changeLanguage(langCode);
+    setIsLanguageDropdownOpen(false);
+  };
+
+  // Handle scroll events to change navbar appearance
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 10) {
+      if (window.scrollY > 20) {
         setScrolled(true);
       } else {
         setScrolled(false);
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Click outside to close language dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        languageDropdownRef.current &&
+        !languageDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLanguageDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Effect to load saved language preference on initial load
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedLanguage = localStorage.getItem("preferred-language");
+      if (savedLanguage && savedLanguage !== currentLanguage) {
+        changeLanguage(savedLanguage);
+      }
+    }
+  }, []);
+
+  // Navigation items
+  const navItems = [
+    { label: t("features"), id: "features" },
+    { label: t("demo"), id: "demo" },
+    { label: t("benefits"), id: "benefits" },
+    { label: t("faq"), id: "faq" },
+  ];
 
   return (
     <nav 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled 
-          ? 'bg-[#070c1b]/80 backdrop-blur-md py-3 shadow-lg' 
-          : 'bg-transparent py-5'
+          ? 'bg-white shadow-md py-2' 
+          : 'bg-white/90 backdrop-blur-sm py-3'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
-        {/* Logo */}
-        <Link href="/">
-          <div className="flex items-center">
-            <div className="mr-2 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center">
-              <span className="text-white font-bold text-lg">B</span>
-            </div>
-            <span className="text-white font-bold text-xl">Brochure<span className="text-blue-500">AI</span></span>
+      <div className="max-w-7xl mx-auto flex justify-between items-center px-4 md:px-8">
+        <div className="flex items-center gap-8">
+          {/* Logo and Brand */}
+          <div
+            className="flex items-center cursor-pointer transition-transform hover:scale-105 duration-200"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <img
+              src="/favicon.png"
+              alt="ExposeFlow Logo"
+              className="h-8 w-auto mr-2"
+            />
+            <span className="text-[#5169FE] font-bold text-xl">ExposeFlow</span>
           </div>
-        </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
-          <Link href="#features">
-            <span className="text-gray-300 hover:text-white transition-colors">Features</span>
-          </Link>
-          <Link href="#pricing">
-            <span className="text-gray-300 hover:text-white transition-colors">Pricing</span>
-          </Link>
-          <Link href="#faq">
-            <span className="text-gray-300 hover:text-white transition-colors">FAQ</span>
-          </Link>
-          <Link href="/dashboard">
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-2 rounded-lg transition-all hover:shadow-lg hover:shadow-blue-500/20 hover:scale-105">
-              Dashboard
-            </span>
-          </Link>
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center gap-8">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                className="text-[#171717] hover:text-[#5169FE] font-medium text-sm transition-colors relative group"
+              >
+                {item.label}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#5169FE] transition-all duration-300 group-hover:w-full"></span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Mobile menu button */}
-        <div className="md:hidden">
-          <button 
-            className="text-gray-300 hover:text-white"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        <div className="flex items-center gap-3 md:gap-4">
+          {/* Language Selector - Fixed width */}
+          <div className="relative" ref={languageDropdownRef}>
+            <button
+              onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+              className="flex items-center justify-between w-20 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-[#171717] transition-colors"
+              aria-label="Select language"
+            >
+              <div className="flex items-center">
+                <img
+                  src={
+                    languages.find((lang) => lang.code === currentLanguage)
+                      ?.flag || "/flags/en.png"
+                  }
+                  alt={`${currentLanguage} flag`}
+                  className="w-5 h-4 object-cover"
+                />
+                <span className="ml-1">{currentLanguage.toUpperCase()}</span>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-4 w-4 transition-transform duration-200 ${isLanguageDropdownOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            {/* Language Dropdown with animation */}
+            <div 
+              className={`absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg overflow-hidden z-50 border border-gray-200 transition-all duration-200 origin-top-right ${
+                isLanguageDropdownOpen 
+                  ? 'transform scale-100 opacity-100' 
+                  : 'transform scale-95 opacity-0 pointer-events-none'
+              }`}
+            >
+              {languages.map((language) => (
+                <button
+                  key={language.code}
+                  onClick={() => handleLanguageChange(language.code)}
+                  className={`flex items-center w-full px-4 py-2.5 text-sm text-left hover:bg-gray-100 transition-colors ${
+                    currentLanguage === language.code ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <img
+                    src={language.flag}
+                    alt={`${language.code} flag`}
+                    className="w-5 h-4 object-cover mr-2"
+                  />
+                  <span className="text-gray-600">
+                    {language.code.toUpperCase()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Login button */}
+          <Link href="/dashboard" className="hidden sm:block">
+            <button className="bg-white hover:bg-gray-100 text-[#5169FE] px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm border border-[#5169FE] hover:shadow-sm">
+              {t("login")}
+            </button>
+          </Link>
+
+          {/* Signup button */}
+          <Link href="/dashboard">
+            <button className="bg-[#5169FE] hover:bg-[#4058e0] text-white px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm whitespace-nowrap border border-[#5169FE] hover:shadow-md">
+              {t("getStarted")}
+            </button>
+          </Link>
+
+          {/* Mobile Menu Button with improved animation */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-1.5 text-[#171717] rounded-md hover:bg-gray-100 transition-colors"
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
-            {mobileMenuOpen ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-              </svg>
-            )}
+            <div className="w-6 h-5 relative">
+              <span 
+                className={`absolute h-0.5 w-6 bg-gray-800 transform transition-all duration-300 ${
+                  isMobileMenuOpen ? 'rotate-45 top-2.5' : 'top-0'
+                }`}
+              ></span>
+              <span 
+                className={`absolute h-0.5 bg-gray-800 transform transition-all duration-300 ${
+                  isMobileMenuOpen ? 'opacity-0 w-0' : 'opacity-100 w-6 top-2'
+                }`}
+              ></span>
+              <span 
+                className={`absolute h-0.5 w-6 bg-gray-800 transform transition-all duration-300 ${
+                  isMobileMenuOpen ? '-rotate-45 top-2.5' : 'top-4'
+                }`}
+              ></span>
+            </div>
           </button>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-[#0c1324] border-t border-[#1c2a47] py-4 px-4">
-          <div className="flex flex-col space-y-4">
-            <Link href="#features">
-              <span className="text-gray-300 hover:text-white transition-colors block py-2">Features</span>
-            </Link>
-            <Link href="#pricing">
-              <span className="text-gray-300 hover:text-white transition-colors block py-2">Pricing</span>
-            </Link>
-            <Link href="#faq">
-              <span className="text-gray-300 hover:text-white transition-colors block py-2">FAQ</span>
-            </Link>
+      {/* Mobile Navigation Menu with animation */}
+      <div 
+        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'max-h-80' : 'max-h-0'
+        }`}
+      >
+        <div className="bg-white px-4 pb-4 pt-2 shadow-inner">
+          <div className="flex flex-col space-y-3">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                className="text-left py-2.5 text-[#171717] hover:text-[#5169FE] font-medium transition-colors rounded-lg hover:bg-gray-50 px-3"
+              >
+                {item.label}
+              </button>
+            ))}
+
+            {/* Mobile-only login link */}
             <Link href="/dashboard">
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2 rounded-lg inline-block">
-                Dashboard
-              </span>
+              <button className="text-left py-2.5 px-3 text-[#5169FE] font-medium rounded-lg hover:bg-gray-50 transition-colors sm:hidden w-full">
+                {t("login")}
+              </button>
             </Link>
+
+            {/* Mobile Language Selector */}
+            <div className="py-2 border-t border-gray-100 mt-1">
+              <p className="text-xs text-gray-500 mb-2 ml-1">
+                {t("navbar.selectLanguage", "Select Language")}
+              </p>
+              <div className="flex gap-2">
+                {languages.map((language) => (
+                  <button
+                    key={language.code}
+                    onClick={() => handleLanguageChange(language.code)}
+                    className={`flex items-center px-3 py-2 rounded-lg ${
+                      currentLanguage === language.code
+                        ? "bg-gray-200 text-[#171717]"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    <img
+                      src={language.flag}
+                      alt={`${language.code} flag`}
+                      className="w-5 h-4 object-cover mr-1"
+                    />
+                    <span className="text-xs font-medium">
+                      {language.code.toUpperCase()}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </nav>
   );
-} 
+}
