@@ -63,7 +63,7 @@ export const processPropertyDescription = async (description: string): Promise<{
         'X-Title': 'Real Estate Extractor'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3-haiku:free', // Changed to a more reliable model
+        model: 'gemini-2.0-pro-exp-02-05:free', // Changed to Gemini free model
         messages: [
           {
             role: 'system',

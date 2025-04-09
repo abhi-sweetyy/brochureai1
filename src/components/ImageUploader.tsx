@@ -340,10 +340,20 @@ export default function ImageUploader({
       
       if (tempFileToEdit) {
         // If editing a file that was just selected but not yet uploaded
-        await handleFileSelect(imageFile);
-        setTempFileToEdit(null);
-        setEditingImage(null);
-        setEditingIndex(null);
+        // Upload the edited image to Supabase
+        const result = await uploadFile(imageFile);
+        
+        if (result) {
+          // Notify parent component with the new image URL
+          if (onImagesUploaded) {
+            onImagesUploaded([...displayImages, result]);
+          }
+          
+          // Clear editing state
+          setTempFileToEdit(null);
+          setEditingImage(null);
+          setEditingIndex(null);
+        }
       } else if (editingIndex !== null) {
         // If editing an existing image
         const oldUrl = displayImages[editingIndex];
