@@ -7,8 +7,8 @@ import Konva from 'konva';
 interface ImageUploaderProps {
   // Props for project page
   images?: string[];
-  onUpload?: (file: File) => Promise<void>;
-  onReplace?: (index: number, file: File) => Promise<void>;
+  onUpload?: (urls: string[]) => void;
+  onRemove?: (index: number) => void;
   
   // Props for ImagesStep
   existingImages?: string[];
@@ -37,7 +37,7 @@ export default function ImageUploader({
   images = [],
   existingImages = [],
   onUpload,
-  onReplace,
+  onRemove,
   onImagesUploaded,
   uploading = false,
   limit = 10,
@@ -307,6 +307,8 @@ export default function ImageUploader({
   // Modified to open the editor first when a file is selected
   const handleFileSelect = async (file: File) => {
     try {
+      setIsUploading(true);
+      
       // Create an image URL from the file for editing
       const imageURL = URL.createObjectURL(file);
       setTempFileToEdit(file);
@@ -318,10 +320,12 @@ export default function ImageUploader({
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  // Modified saveEditedImage to handle the case when we're editing a new upload
+  // Modified saveEditedImage to handle URL returns
   const saveEditedImage = async () => {
     if (!editingImage || !konvaImageRef.current) return;
     
@@ -338,28 +342,14 @@ export default function ImageUploader({
         return;
       }
       
-      if (tempFileToEdit) {
-        // If editing a file that was just selected but not yet uploaded
-        // Upload the edited image to Supabase
-        const result = await uploadFile(imageFile);
-        
-        if (result) {
-          // Notify parent component with the new image URL
-          if (onImagesUploaded) {
-            onImagesUploaded([...displayImages, result]);
-          }
+      // Upload the file and get URL
+      const result = await uploadFile(imageFile);
+      
+      if (result) {
+        if (editingIndex !== null && editingIndex >= 0) {
+          // If editing an existing image
+          const oldUrl = displayImages[editingIndex];
           
-          // Clear editing state
-          setTempFileToEdit(null);
-          setEditingImage(null);
-          setEditingIndex(null);
-        }
-      } else if (editingIndex !== null) {
-        // If editing an existing image
-        const oldUrl = displayImages[editingIndex];
-        const result = await uploadFile(imageFile, oldUrl, true);
-        
-        if (result) {
           // Create a new array with the updated image URL
           const newImages = [...displayImages];
           newImages[editingIndex] = result;
@@ -369,10 +359,23 @@ export default function ImageUploader({
             onImagesUploaded(newImages);
           }
           
-          // Clear editing state
-          setEditingImage(null);
-          setEditingIndex(null);
+          // Try to delete the old file
+          if (oldUrl) {
+            await deleteImageFromStorage(oldUrl);
+          }
+        } else {
+          // If this is a new image
+          if (onImagesUploaded) {
+            onImagesUploaded([...displayImages, result]);
+          } else if (onUpload) {
+            onUpload([result]);
+          }
         }
+        
+        // Clear editing state
+        setTempFileToEdit(null);
+        setEditingImage(null);
+        setEditingIndex(null);
       }
     } catch (error) {
       console.error('Error saving edited image:', error);
@@ -1404,34 +1407,12 @@ export default function ImageUploader({
     return result;
   }
 
-  // Add function to handle image removal
+  // Handle image removal
   const handleRemoveImage = async (index: number, e: React.MouseEvent) => {
-    // Prevent the event from bubbling up to parent elements (especially form)
-    // but don't prevent default actions on the button itself
     e.stopPropagation();
     
-    try {
-      setIsUploading(true);
-      
-      // Get the URL of the image to remove
-      const imageUrl = displayImages[index];
-      console.log('🗑️ Removing image:', imageUrl);
-      
-      if (onImagesUploaded) {
-        // First attempt to delete from storage
-        const deleteResult = await deleteImageFromStorage(imageUrl);
-        console.log(`${deleteResult ? '✅' : '❌'} Deletion result:`, deleteResult);
-        
-        // Update the state by filtering out this image
-        const newUrls = displayImages.filter((_, i) => i !== index);
-        onImagesUploaded(newUrls);
-        
-        console.log('✅ Image removed from list');
-      }
-    } catch (error) {
-      console.error('💥 Error removing image:', error);
-    } finally {
-      setIsUploading(false);
+    if (onRemove) {
+      onRemove(index);
     }
   };
 
@@ -1533,15 +1514,7 @@ export default function ImageUploader({
   return (
     <div 
       className="w-full" 
-      onClick={(e) => {
-        // Only stop propagation, don't prevent default actions
-        // This allows file inputs to work but prevents form submission
-        if (onClick) {
-          onClick(e);
-        } else {
-          e.stopPropagation();
-        }
-      }}
+      onClick={onClick}
     >
       {/* Image editor modal */}
       {editingImage && <ImageEditorModal />}
@@ -1563,13 +1536,6 @@ export default function ImageUploader({
                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm"
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleReplaceClick(index, e)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md text-sm"
-                  >
-                    Replace
                   </button>
                   <button
                     type="button"

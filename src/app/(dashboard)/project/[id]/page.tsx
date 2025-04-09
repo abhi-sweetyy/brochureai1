@@ -57,6 +57,7 @@ export default function ProjectEditor() {
   const [uploading, setUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [credits, setCredits] = useState<number | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Fetch project data with security checks
   useEffect(() => {
@@ -308,32 +309,12 @@ export default function ProjectEditor() {
   };
 
   // Handle image upload
-  const handleImageUpload = async (file: File) => {
+  const handleImagesUploaded = async (urls: string[]) => {
     try {
       setUploading(true);
       
-      // Upload the new image
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${params.id}/${fileName}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('docx')
-        .upload(filePath, file);
-      
-      if (uploadError) {
-        throw uploadError;
-      }
-      
-      // Get the public URL from the correct bucket
-      const { data: publicUrlData } = supabase.storage
-        .from('docx')
-        .getPublicUrl(filePath);
-      
-      const newImageUrl = publicUrlData.publicUrl;
-      
-      // Add the new image to the array
-      const newImages = [...uploadedImages, newImageUrl];
+      // Combine existing images with new ones
+      const newImages = [...uploadedImages, ...urls];
       
       // Update the project in the database
       const { data: updateData, error: updateError } = await supabase
@@ -351,53 +332,28 @@ export default function ProjectEditor() {
       
       // Only update the state after successful database update
       setUploadedImages(newImages);
-      toast.success('Image uploaded successfully');
+      toast.success('Images uploaded successfully');
       
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
+      console.error('Error uploading images:', error);
+      toast.error('Failed to upload images');
     } finally {
       setUploading(false);
     }
   };
 
-  // Handle image replacement
-  const handleImageReplace = async (index: number, file: File) => {
+  // Handle image removal
+  const handleImageRemove = async (index: number) => {
     try {
       setUploading(true);
       
-      // Get the old image URL
-      const oldImageUrl = uploadedImages[index];
+      // Get the image URL to be removed
+      const imageToRemove = uploadedImages[index];
       
-      // Upload the new file with a unique name
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `${params.id}/${fileName}`;
+      // Create new array without the removed image
+      const newImages = uploadedImages.filter((_, i) => i !== index);
       
-      // Upload the file to the correct bucket
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('docx')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-      
-      if (uploadError) {
-        throw new Error(`Failed to upload new image: ${uploadError.message}`);
-      }
-      
-      // Get the public URL from the correct bucket
-      const { data: publicUrlData } = supabase.storage
-        .from('docx')
-        .getPublicUrl(filePath);
-      
-      const newImageUrl = publicUrlData.publicUrl;
-      
-      // Create a new array with the replaced image
-      const newImages = [...uploadedImages];
-      newImages[index] = newImageUrl;
-      
-      // Update the database directly
+      // Update the project in the database
       const { data: updateData, error: updateError } = await supabase
         .from('real_estate_projects')
         .update({ 
@@ -408,35 +364,34 @@ export default function ProjectEditor() {
         .select();
       
       if (updateError) {
-        throw new Error(`Failed to update project: ${updateError.message}`);
+        throw updateError;
       }
       
-      // Update the state safely
+      // Update state
       setUploadedImages(newImages);
-      toast.success('Image replaced successfully');
       
-      // Try to delete the old file if it exists
-      if (oldImageUrl) {
+      // Try to delete the file from storage
+      if (imageToRemove) {
         try {
-          // Extract the path from the URL
-          const urlParts = oldImageUrl.split('/');
+          const urlParts = imageToRemove.split('/');
           const bucketNameIndex = urlParts.findIndex(part => part === 'docx');
           
           if (bucketNameIndex >= 0 && bucketNameIndex < urlParts.length - 1) {
-            const oldPath = urlParts.slice(bucketNameIndex + 1).join('/').split('?')[0];
+            const filePath = urlParts.slice(bucketNameIndex + 1).join('/').split('?')[0];
             
-            const { data: deleteData, error: deleteError } = await supabase.storage
+            await supabase.storage
               .from('docx')
-              .remove([oldPath]);
+              .remove([filePath]);
           }
         } catch (deleteError) {
-          console.error('Error during file deletion:', deleteError);
+          console.error('Error deleting file from storage:', deleteError);
         }
       }
       
-    } catch (error: any) {
-      console.error('Image replacement failed:', error);
-      toast.error(error.message || 'Failed to replace image');
+      toast.success('Image removed successfully');
+    } catch (error) {
+      console.error('Error removing image:', error);
+      toast.error('Failed to remove image');
     } finally {
       setUploading(false);
     }
@@ -722,14 +677,22 @@ export default function ProjectEditor() {
 
                   {activeTab === 'images' && (
                     <div className="space-y-6">
-                      <h3 className="text-lg font-medium text-white mb-4">Property Images</h3>
+                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+                        <p className="text-blue-400">
+                          Upload and manage images for your project. These images will be used in your brochure.
+                        </p>
+                      </div>
                       
-                      <ImageUploader
-                        images={uploadedImages}
-                        onUpload={handleImageUpload}
-                        onReplace={handleImageReplace}
-                        uploading={uploading}
-                      />
+                      <div className="bg-[#171e2e] rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">Property Images</h3>
+                        <ImageUploader
+                          images={uploadedImages}
+                          onUpload={handleImagesUploaded}
+                          onRemove={handleImageRemove}
+                          uploading={uploading}
+                          limit={10}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -807,13 +770,18 @@ export default function ProjectEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070c1b] text-white">
+    <div className="min-h-screen bg-[#0B101B] text-gray-100">
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[100px]"></div>
       </div>
       
-      <DashboardHeader credits={credits} userEmail={session?.user?.email} />
+      <DashboardHeader 
+        credits={credits}
+        userEmail={session?.user?.email}
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen}
+      />
       
       <div className="container mx-auto px-4 py-12">
         {error ? (
