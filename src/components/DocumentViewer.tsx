@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { saveAs } from 'file-saver';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { toast } from 'react-hot-toast';
+import { createPortal } from 'react-dom';
 
 interface DocumentViewerProps {
   placeholders: Record<string, string>;
@@ -607,48 +608,170 @@ export default function DocumentViewer({
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     if (!isFullScreen) {
-      setIsEditMode(true); // Automatically switch to edit mode when going fullscreen
+      setIsEditMode(true);
+      // Prevent body scrolling
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Re-enable scrolling
+      document.body.style.overflow = '';
     }
   };
 
-  // If in fullscreen mode, render a fullscreen overlay
+  // Create fullscreen portal component
+  const FullScreenPortal = () => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    
+    useEffect(() => {
+      // Create a new div element that will be appended directly to the body
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.top = '0';
+      container.style.left = '0';
+      container.style.width = '100%';
+      container.style.height = '100%';
+      container.style.zIndex = '99999';
+      container.style.background = '#000';
+      
+      // Append to body, not inside any other container
+      document.body.appendChild(container);
+      
+      // Store reference
+      containerRef.current = container;
+      
+      // Log for debugging
+      console.log("Portal container created, iframe URL:", editUrl);
+      
+      return () => {
+        // Clean up on unmount
+        if (containerRef.current && document.body.contains(containerRef.current)) {
+          document.body.removeChild(containerRef.current);
+        }
+        // Restore scrolling on unmount
+        document.body.style.overflow = '';
+      };
+    }, []);
+    
+    if (!containerRef.current || !editUrl) return null;
+    
+    return createPortal(
+      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <iframe 
+          src={editUrl}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            border: 'none'
+          }}
+          title="Presentation Editor"
+          allowFullScreen
+        />
+        <button
+          onClick={toggleFullScreen}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: 100000,
+            background: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+          }}
+          title="Exit Full Screen"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>,
+      containerRef.current
+    );
+  };
+
+  // If in fullscreen mode, render a fixed position overlay
   if (isFullScreen && editUrl) {
+    // Add parameters to force a more embedded/fullscreen experience
+    const enhancedEditUrl = `${editUrl}&embedded=true&rm=embedded`;
+    
     return (
-      <div className="fixed inset-0 z-50 bg-[#0A0A0A] flex flex-col">
-        <div className="p-4 bg-[#111827] shadow-md flex justify-between items-center">
-          <h3 className="text-lg font-medium text-white">Edit Presentation</h3>
-          <div className="flex space-x-3">
-            <button
-              onClick={downloadDocument}
-              disabled={loading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Download PDF
-            </button>
-            <button
-              onClick={toggleFullScreen}
-              className="bg-gray-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors"
-            >
-              Exit Full Screen
-            </button>
-          </div>
-        </div>
-        <div className="flex-grow">
-          <iframe 
-            src={editUrl}
-            className="w-full h-full border-0"
-            title="Presentation Editor"
-            allowFullScreen
-          />
-        </div>
+      <div 
+        id="fullscreen-overlay" 
+        style={{ 
+          position: 'fixed',
+          top: '60px', // Leave space for the header (adjust this value based on your header height)
+          left: '245px', // Increased space for the sidebar (adjust this value based on your sidebar width)
+          right: 0,
+          bottom: 0,
+          width: 'auto', // Let right: 0 determine the width
+          height: 'auto', // Let bottom: 0 determine the height
+          zIndex: 2147483647, // Maximum possible z-index value (2^31 - 1)
+          background: 'white',
+          overflow: 'hidden',
+          display: 'block',
+          isolation: 'isolate' // Creates a new stacking context
+        }}
+      >
+        <iframe 
+          src={enhancedEditUrl}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0
+          }}
+          title="Presentation Editor"
+          allowFullScreen
+          id="fullscreen-iframe"
+        />
+        <button
+          onClick={toggleFullScreen}
+          style={{
+            position: 'fixed',
+            top: '70px', // Position just below header
+            right: '20px',
+            zIndex: 2147483647, // Maximum possible z-index
+            background: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '60px', // Larger button
+            height: '60px', // Larger button
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.5)',
+            fontSize: '24px'
+          }}
+          title="Exit Full Screen"
+          id="fullscreen-exit-button"
+        >
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-[#1c2a47] flex justify-between items-center">
-        <h3 className="text-lg font-medium text-white">
+      <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white text-gray-800">
+        <h3 className="text-lg font-medium text-gray-800">
           {isEditMode ? "Edit" : "Preview"}
         </h3>
         <div className="flex space-x-2">
@@ -656,7 +779,7 @@ export default function DocumentViewer({
             <button
               onClick={processDocumentManually}
               disabled={loading || images.length === 0}
-              className="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-base"
+              className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-base"
             >
               {loading ? (
                 <>
@@ -683,13 +806,13 @@ export default function DocumentViewer({
               
               {editUrl && previewUrl && (
                 <>
-                  <div className="flex items-center bg-gray-800 rounded-lg p-1">
+                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
                     <button
                       onClick={() => setIsEditMode(false)}
                       className={`px-4 py-2 rounded ${
                         !isEditMode 
-                          ? 'bg-purple-600 text-white' 
-                          : 'text-gray-300 hover:text-white'
+                          ? 'bg-blue-600 text-white' 
+                          : 'text-gray-600 hover:text-gray-800'
                       } transition-colors`}
                     >
                       Preview
@@ -699,7 +822,7 @@ export default function DocumentViewer({
                       className={`px-4 py-2 rounded ${
                         isEditMode 
                           ? 'bg-green-600 text-white' 
-                          : 'text-gray-300 hover:text-white'
+                          : 'text-gray-600 hover:text-gray-800'
                       } transition-colors`}
                     >
                       Edit
@@ -708,7 +831,7 @@ export default function DocumentViewer({
                   {isEditMode && (
                     <button
                       onClick={toggleFullScreen}
-                      className="text-green-500 hover:text-green-400 transition-colors"
+                      className="text-green-600 hover:text-green-700 transition-colors"
                       title="Edit in Fullscreen"
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -723,11 +846,11 @@ export default function DocumentViewer({
         </div>
       </div>
       
-      <div className="flex-grow bg-[#0A0A0A] relative">
+      <div className="flex-grow bg-white relative">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-600 mb-4"></div>
-            <p className="text-gray-400 text-lg">Processing presentation...</p>
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-gray-600 text-lg">Processing presentation...</p>
           </div>
         ) : previewUrl ? (
           <>
@@ -753,14 +876,14 @@ export default function DocumentViewer({
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <svg className="w-24 h-24 mb-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-24 h-24 mb-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-gray-400 text-xl mb-3">No Brochure preview available.</p>
+            <p className="text-gray-600 text-xl mb-3">No Brochure preview available.</p>
             <p className="text-gray-500 text-base">Click "Generate Brochure" to create a presentation with your data.</p>
             {error && (
-              <div className="mt-6 p-4 bg-red-900/20 border border-red-900 rounded-md max-w-md">
-                <p className="text-red-400 text-sm">{error}</p>
+              <div className="mt-6 p-4 bg-red-100 border border-red-300 rounded-md max-w-md">
+                <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
           </div>

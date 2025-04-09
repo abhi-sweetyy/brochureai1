@@ -435,7 +435,7 @@ export default function ProjectEditor() {
       return (
         <div className="flex items-center justify-center py-10">
           <div className="text-center">
-            <p className="text-red-400">Project data not available</p>
+            <p className="text-red-600">Project data not available</p>
           </div>
         </div>
       );
@@ -455,20 +455,20 @@ export default function ProjectEditor() {
 
     return (
       <>
-        <h1 className="text-2xl font-bold">{project.title || 'Untitled Project'}</h1>
-        <p className="text-gray-400">{project.address || 'No address'}</p>
+        <h1 className="text-2xl font-bold text-gray-900">{project.title || 'Untitled Project'}</h1>
+        <p className="text-gray-600">{project.address || 'No address'}</p>
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
           {!project.presentation_id && (
             <div className="lg:col-span-7">
-              <div className="bg-[#0c1324] border border-[#1c2a47] rounded-xl overflow-hidden mb-8 shadow-xl">
-                <div className="flex border-b border-[#1c2a47]">
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8 shadow-md">
+                <div className="flex border-b border-gray-200">
                   <button
                     onClick={() => setActiveTab('basic-info')}
                     className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
                       activeTab === 'basic-info' 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
-                        : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
                     Property Info
@@ -477,8 +477,8 @@ export default function ProjectEditor() {
                     onClick={() => setActiveTab('descriptions')}
                     className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
                       activeTab === 'descriptions' 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
-                        : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
                     Descriptions
@@ -487,8 +487,8 @@ export default function ProjectEditor() {
                     onClick={() => setActiveTab('images')}
                     className={`flex-1 py-4 px-4 text-center text-sm font-medium ${
                       activeTab === 'images' 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white' 
-                        : 'text-gray-300 hover:bg-[#111b33] hover:text-white'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
                     Images
@@ -499,7 +499,7 @@ export default function ProjectEditor() {
                   {activeTab === 'basic-info' && (
                     <div className="space-y-6">
                       <div>
-                        <label htmlFor="title" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                           Property Title
                         </label>
                         <input
@@ -508,12 +508,12 @@ export default function ProjectEditor() {
                           name="title"
                           value={project.title || ''}
                           onChange={handleTitleChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="address" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
                           Property Address
                         </label>
                         <input
@@ -522,12 +522,12 @@ export default function ProjectEditor() {
                           name="address"
                           value={project.address || ''}
                           onChange={handleAddressChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="price" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
                           Price
                         </label>
                         <input
@@ -536,12 +536,12 @@ export default function ProjectEditor() {
                           name="price"
                           value={projectDetails.price || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="date_available" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="date_available" className="block text-sm font-medium text-gray-700 mb-1">
                           Date Available
                         </label>
                         <input
@@ -550,12 +550,12 @@ export default function ProjectEditor() {
                           name="date_available"
                           value={projectDetails.date_available || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="phone_number" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
                           Phone Number
                         </label>
                         <input
@@ -564,12 +564,12 @@ export default function ProjectEditor() {
                           name="phone_number"
                           value={projectDetails.phone_number || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="email_address" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="email_address" className="block text-sm font-medium text-gray-700 mb-1">
                           Email Address
                         </label>
                         <input
@@ -578,12 +578,12 @@ export default function ProjectEditor() {
                           name="email_address"
                           value={projectDetails.email_address || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="website_name" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="website_name" className="block text-sm font-medium text-gray-700 mb-1">
                           Website
                         </label>
                         <input
@@ -592,12 +592,12 @@ export default function ProjectEditor() {
                           name="website_name"
                           value={projectDetails.website_name || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="name_brokerfirm" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="name_brokerfirm" className="block text-sm font-medium text-gray-700 mb-1">
                           Broker Firm Name
                         </label>
                         <input
@@ -606,12 +606,12 @@ export default function ProjectEditor() {
                           name="name_brokerfirm"
                           value={projectDetails.name_brokerfirm || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="address_brokerfirm" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="address_brokerfirm" className="block text-sm font-medium text-gray-700 mb-1">
                           Broker Firm Address
                         </label>
                         <input
@@ -620,7 +620,7 @@ export default function ProjectEditor() {
                           name="address_brokerfirm"
                           value={projectDetails.address_brokerfirm || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -629,7 +629,7 @@ export default function ProjectEditor() {
                   {activeTab === 'descriptions' && (
                     <div className="space-y-6">
                       <div>
-                        <label htmlFor="shortdescription" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="shortdescription" className="block text-sm font-medium text-gray-700 mb-1">
                           Short Description
                         </label>
                         <textarea
@@ -638,13 +638,13 @@ export default function ProjectEditor() {
                           value={projectDetails.shortdescription || ''}
                           onChange={handleInputChange}
                           rows={3}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="Brief description of the property"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="descriptionlarge" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="descriptionlarge" className="block text-sm font-medium text-gray-700 mb-1">
                           Layout Description
                         </label>
                         <textarea
@@ -653,13 +653,13 @@ export default function ProjectEditor() {
                           value={projectDetails.descriptionlarge || ''}
                           onChange={handleInputChange}
                           rows={4}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="Detailed layout description of the property"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="descriptionextralarge" className="block text-sm font-medium text-white mb-1">
+                        <label htmlFor="descriptionextralarge" className="block text-sm font-medium text-gray-700 mb-1">
                           Detailed Description
                         </label>
                         <textarea
@@ -668,7 +668,7 @@ export default function ProjectEditor() {
                           value={projectDetails.descriptionextralarge || ''}
                           onChange={handleInputChange}
                           rows={6}
-                          className="w-full bg-[#111b33] border border-[#1c2a47] rounded-lg px-4 py-2 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="Comprehensive property description"
                         />
                       </div>
@@ -677,14 +677,14 @@ export default function ProjectEditor() {
 
                   {activeTab === 'images' && (
                     <div className="space-y-6">
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                        <p className="text-blue-400">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <p className="text-blue-700">
                           Upload and manage images for your project. These images will be used in your brochure.
                         </p>
                       </div>
                       
-                      <div className="bg-[#171e2e] rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-white mb-4">Property Images</h3>
+                      <div className="bg-gray-50 rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Property Images</h3>
                         <ImageUploader
                           images={uploadedImages}
                           onUpload={handleImagesUploaded}
@@ -697,7 +697,7 @@ export default function ProjectEditor() {
                   )}
                 </div>
 
-                <div className="flex justify-between p-6 border-t border-[#1c2a47]">
+                <div className="flex justify-between p-6 border-t border-gray-200">
                   <button
                     onClick={() => {
                       if (activeTab === 'descriptions') setActiveTab('basic-info');
@@ -706,8 +706,8 @@ export default function ProjectEditor() {
                     disabled={activeTab === 'basic-info'}
                     className={`px-4 py-2 rounded-md text-sm font-medium ${
                       activeTab === 'basic-info'
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-gray-700 hover:bg-gray-600'
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
                     Previous
@@ -717,7 +717,7 @@ export default function ProjectEditor() {
                     whileTap={{ scale: 0.95 }}
                     onClick={handleSave}
                     disabled={updating}
-                    className="group relative inline-flex items-center overflow-hidden rounded-md bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-2 transition-all duration-300 ease-out hover:shadow-lg focus:outline-none disabled:opacity-70"
+                    className="group relative inline-flex items-center overflow-hidden rounded-md bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-2 text-white transition-all duration-300 ease-out hover:shadow-lg focus:outline-none disabled:opacity-70"
                   >
                     {updating ? (
                       <>
@@ -740,8 +740,8 @@ export default function ProjectEditor() {
                     disabled={activeTab === 'images'}
                     className={`px-4 py-2 rounded-md text-sm font-medium ${
                       activeTab === 'images'
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
                     Next
@@ -752,7 +752,7 @@ export default function ProjectEditor() {
           )}
           
           <div className={`${project.presentation_id ? 'lg:col-span-12' : 'lg:col-span-5'} transition-all duration-300`}>
-            <div className={`bg-[#111827] rounded-lg overflow-hidden border border-[#1c2a47] sticky top-8 ${project.presentation_id ? 'min-h-[800px]' : 'h-full'}`}>
+            <div className={`bg-white rounded-lg overflow-hidden border border-gray-200 shadow-md sticky top-8 ${project.presentation_id ? 'min-h-[800px]' : 'h-full'}`}>
               <DocumentViewer
                 projectId={params.id as string}
                 placeholders={placeholders}
@@ -770,7 +770,7 @@ export default function ProjectEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B101B] text-gray-100">
+    <div className="min-h-screen bg-white text-gray-800">
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[100px]"></div>
@@ -785,7 +785,7 @@ export default function ProjectEditor() {
       
       <div className="container mx-auto px-4 py-12">
         {error ? (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-6 rounded-lg">
+          <div className="bg-red-100 border border-red-300 text-red-600 p-6 rounded-lg">
             <h2 className="text-xl font-semibold mb-2">Error</h2>
             <p>{error}</p>
           </div>
@@ -796,7 +796,7 @@ export default function ProjectEditor() {
         ) : !project ? (
           <div className="flex items-center justify-center py-10">
             <div className="text-center">
-              <p className="text-red-400">Project data not available</p>
+              <p className="text-red-600">Project data not available</p>
             </div>
           </div>
         ) : (

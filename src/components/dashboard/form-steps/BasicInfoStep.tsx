@@ -228,21 +228,21 @@ Output ONLY a JSON object with these three fields exactly. If information is not
 
   return (
     <div className="space-y-6">
-      <div className="bg-[#141f38] border border-[#1c2a47] rounded-lg p-6 mb-6">
-        <h3 className="text-white text-lg font-medium mb-4">Property Details from Document</h3>
-        <p className="text-gray-400 mb-4">Upload a document or paste property details below:</p>
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+        <h3 className="text-gray-800 text-lg font-medium mb-4">Property Details from Document</h3>
+        <p className="text-gray-600 mb-4">Upload a document or paste property details below:</p>
         
         <div className="mb-4">
           <div className="flex items-center justify-center w-full">
             <label 
-              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-[#1D2839] border-[#2A3441] hover:bg-[#222f44]"
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 border-gray-300 hover:bg-gray-100"
             >
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg className="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-8 h-8 mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                 </svg>
-                <p className="mb-2 text-sm text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                <p className="text-xs text-gray-400">DOCX, TXT, or RTF (MAX. 10MB)</p>
+                <p className="mb-2 text-sm text-gray-600"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                <p className="text-xs text-gray-500">DOCX, TXT, or RTF (MAX. 10MB)</p>
               </div>
               <input 
                 ref={fileInputRef}
@@ -256,18 +256,18 @@ Output ONLY a JSON object with these three fields exactly. If information is not
         </div>
 
         <div className="mb-4">
-          <p className="text-gray-400 text-sm mb-2">Or paste property details below:</p>
+          <p className="text-gray-600 text-sm mb-2">Or paste property details below:</p>
           <textarea
             value={docText}
             onChange={handleTextAreaChange}
             rows={10}
-            className="w-full bg-[#1D2839] border border-[#2A3441] rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Paste property description text here..."
           ></textarea>
         </div>
         
         {uploadError && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-md mb-4 flex items-center">
+          <div className="bg-red-100 border border-red-300 text-red-600 p-3 rounded-md mb-4 flex items-center">
             <svg className="w-5 h-5 mr-2 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -306,16 +306,16 @@ Output ONLY a JSON object with these three fields exactly. If information is not
         </button>
       </div>
 
-      <div className="bg-[#141f38] border border-[#1c2a47] rounded-lg p-6">
-        <h3 className="text-white text-lg font-medium mb-4">Required Information</h3>
-        <p className="text-gray-400 mb-4">Fill in or edit the property details below:</p>
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <h3 className="text-gray-800 text-lg font-medium mb-4">Required Information</h3>
+        <p className="text-gray-600 mb-4">Fill in or edit the property details below:</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               Property Title*
               {autoFilledFields.includes('title') && (
-                <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
               )}
             </label>
             <input
@@ -323,10 +323,10 @@ Output ONLY a JSON object with these three fields exactly. If information is not
               name="title"
               value={placeholders.title || ''}
               onChange={handleInputChange}
-              className={`w-full rounded-md px-3 py-2 text-white ${
+              className={`w-full rounded-md px-3 py-2 text-gray-800 ${
                 autoFilledFields.includes('title') 
-                  ? 'bg-blue-900/20 border border-blue-500/30' 
-                  : 'bg-[#1D2839] border border-[#2A3441]'
+                  ? 'bg-blue-50 border border-blue-300' 
+                  : 'bg-white border border-gray-300'
               }`}
               placeholder="Enter property title"
               required
@@ -334,10 +334,10 @@ Output ONLY a JSON object with these three fields exactly. If information is not
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               Address*
               {autoFilledFields.includes('address') && (
-                <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
               )}
             </label>
             <input
@@ -345,10 +345,10 @@ Output ONLY a JSON object with these three fields exactly. If information is not
               name="address"
               value={placeholders.address || ''}
               onChange={handleInputChange}
-              className={`w-full rounded-md px-3 py-2 text-white ${
+              className={`w-full rounded-md px-3 py-2 text-gray-800 ${
                 autoFilledFields.includes('address') 
-                  ? 'bg-blue-900/20 border border-blue-500/30' 
-                  : 'bg-[#1D2839] border border-[#2A3441]'
+                  ? 'bg-blue-50 border border-blue-300' 
+                  : 'bg-white border border-gray-300'
               }`}
               placeholder="Enter property address"
               required
@@ -356,20 +356,20 @@ Output ONLY a JSON object with these three fields exactly. If information is not
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               Short Description
               {autoFilledFields.includes('shortdescription') && (
-                <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
               )}
             </label>
             <textarea
               name="shortdescription"
               value={placeholders.shortdescription || ''}
               onChange={handleInputChange}
-              className={`w-full rounded-md px-3 py-2 text-white ${
+              className={`w-full rounded-md px-3 py-2 text-gray-800 ${
                 autoFilledFields.includes('shortdescription') 
-                  ? 'bg-blue-900/20 border border-blue-500/30' 
-                  : 'bg-[#1D2839] border border-[#2A3441]'
+                  ? 'bg-blue-50 border border-blue-300' 
+                  : 'bg-white border border-gray-300'
               }`}
               placeholder="Enter short property description"
               rows={2}
@@ -377,10 +377,10 @@ Output ONLY a JSON object with these three fields exactly. If information is not
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               Price*
               {autoFilledFields.includes('price') && (
-                <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
               )}
             </label>
             <input
@@ -388,10 +388,10 @@ Output ONLY a JSON object with these three fields exactly. If information is not
               name="price"
               value={placeholders.price || ''}
               onChange={handleInputChange}
-              className={`w-full rounded-md px-3 py-2 text-white ${
+              className={`w-full rounded-md px-3 py-2 text-gray-800 ${
                 autoFilledFields.includes('price') 
-                  ? 'bg-blue-900/20 border border-blue-500/30' 
-                  : 'bg-[#1D2839] border border-[#2A3441]'
+                  ? 'bg-blue-50 border border-blue-300' 
+                  : 'bg-white border border-gray-300'
               }`}
               placeholder="Enter property price"
               required
@@ -400,10 +400,10 @@ Output ONLY a JSON object with these three fields exactly. If information is not
         </div>
         
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
+          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
             Date Available
             {autoFilledFields.includes('date_available') && (
-              <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">AI Filled</span>
+              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
             )}
           </label>
           <input
@@ -411,10 +411,10 @@ Output ONLY a JSON object with these three fields exactly. If information is not
             name="date_available"
             value={placeholders.date_available || ''}
             onChange={handleInputChange}
-            className={`w-full rounded-md px-3 py-2 text-white ${
+            className={`w-full rounded-md px-3 py-2 text-gray-800 ${
               autoFilledFields.includes('date_available') 
-                ? 'bg-blue-900/20 border border-blue-500/30' 
-                : 'bg-[#1D2839] border border-[#2A3441]'
+                ? 'bg-blue-50 border border-blue-300' 
+                : 'bg-white border border-gray-300'
             }`}
             placeholder="When is the property available?"
           />
@@ -422,20 +422,20 @@ Output ONLY a JSON object with these three fields exactly. If information is not
         
         <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               Site Plan Description
               {autoFilledFields.includes('descriptionlarge') && (
-                <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
               )}
             </label>
             <textarea
               name="descriptionlarge"
               value={placeholders.descriptionlarge || ''}
               onChange={handleInputChange}
-              className={`w-full rounded-md px-3 py-2 text-white ${
+              className={`w-full rounded-md px-3 py-2 text-gray-800 ${
                 autoFilledFields.includes('descriptionlarge') 
-                  ? 'bg-blue-900/20 border border-blue-500/30' 
-                  : 'bg-[#1D2839] border border-[#2A3441]'
+                  ? 'bg-blue-50 border border-blue-300' 
+                  : 'bg-white border border-gray-300'
               }`}
               placeholder="Enter information about the property's site plan and position"
               rows={4}
@@ -443,20 +443,20 @@ Output ONLY a JSON object with these three fields exactly. If information is not
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               Detailed Property Description
               {autoFilledFields.includes('descriptionextralarge') && (
-                <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
               )}
             </label>
             <textarea
               name="descriptionextralarge"
               value={placeholders.descriptionextralarge || ''}
               onChange={handleInputChange}
-              className={`w-full rounded-md px-3 py-2 text-white ${
+              className={`w-full rounded-md px-3 py-2 text-gray-800 ${
                 autoFilledFields.includes('descriptionextralarge') 
-                  ? 'bg-blue-900/20 border border-blue-500/30' 
-                  : 'bg-[#1D2839] border border-[#2A3441]'
+                  ? 'bg-blue-50 border border-blue-300' 
+                  : 'bg-white border border-gray-300'
               }`}
               placeholder="Enter detailed property description"
               rows={8}
