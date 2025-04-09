@@ -116,7 +116,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
           'X-Title': 'Critical Fields Extractor'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3-haiku:free', // More reliable model
+          model: 'qwen/qwen2.5-vl-72b-instruct:free', // More reliable model
           messages: [
             {
               role: 'system',

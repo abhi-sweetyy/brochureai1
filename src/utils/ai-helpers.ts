@@ -63,7 +63,7 @@ export const processPropertyDescription = async (description: string): Promise<{
         'X-Title': 'Real Estate Extractor'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3-haiku:free', // Changed to a more reliable model
+        model: 'qwen/qwen2.5-vl-72b-instruct:free', // Changed to a more reliable model
         messages: [
           {
             role: 'system',
