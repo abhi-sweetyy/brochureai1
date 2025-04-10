@@ -14,6 +14,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { session } = useSessionContext();
   const [credits, setCredits] = useState<number | null>(null);
   const supabase = createClientComponentClient();
@@ -24,67 +25,60 @@ export default function DashboardLayout({
     activeTab = "account";
   } else if (pathname.includes("/billing")) {
     activeTab = "billing";
+  } else if (pathname.includes("/brochures")) {
+    activeTab = "brochures";
   }
 
-  // Fetch user credits
+  // Toggle sidebar collapse state
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+    // Store preference in localStorage
+    localStorage.setItem('sidebarCollapsed', (!isSidebarCollapsed).toString());
+  };
+
+  // Check if user has a sidebar preference
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('sidebarCollapsed');
+    if (savedPreference !== null) {
+      setIsSidebarCollapsed(savedPreference === 'true');
+    }
+  }, []);
+
+  // Fetch credits when session changes
   useEffect(() => {
     const fetchCredits = async () => {
       if (!session?.user?.id) return;
       
-      try {
-        console.log("Fetching credits for user:", session.user.id);
-        
-        // Always use the profiles table as the source of truth
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('credits')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error) {
-          console.error("Error fetching credits:", error);
-          
-          // If profile doesn't exist yet, create it with 0 credits
-          if (error.code === 'PGRST116') {
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({ id: session.user.id, credits: 0 });
-            
-            if (!insertError) {
-              setCredits(0);
-              console.log("Created new profile with 0 credits");
-            } else {
-              console.error("Error creating profile:", insertError);
-            }
-          }
-          return;
-        }
-        
-        console.log("Credits data:", data);
-        if (data) {
-          setCredits(data.credits || 0);
-        }
-      } catch (error) {
-        console.error("Error in fetchCredits:", error);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('credits')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (data) {
+        setCredits(data.credits);
       }
     };
 
     fetchCredits();
+  }, [session, supabase]);
 
-    // Listen for changes in the profiles table
+  // Listen for credits updates
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    
     const channel = supabase
-      .channel('profiles-changes')
+      .channel('credits')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'profiles',
-          filter: `id=eq.${session?.user?.id}`,
+          filter: `id=eq.${session.user.id}`,
         },
-        (payload) => {
-          console.log("Profile change detected:", payload);
-          if (payload.new && 'credits' in payload.new) {
+        (payload: any) => {
+          if (payload.new && payload.new.credits !== undefined) {
             setCredits(payload.new.credits);
           }
         }
@@ -92,7 +86,7 @@ export default function DashboardLayout({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [session, supabase]);
 
@@ -125,10 +119,12 @@ export default function DashboardLayout({
         activeTab={activeTab} 
         isOpen={isMenuOpen}
         setIsOpen={setIsMenuOpen}
+        isCollapsed={isSidebarCollapsed}
+        toggleCollapse={toggleSidebarCollapse}
       />
       
-      {/* Main content with padding to account for sidebar */}
-      <div className="md:pl-64 pt-16 transition-all duration-200">
+      {/* Main content with padding that adjusts to sidebar state */}
+      <div className={`transition-all duration-300 pt-16 ${isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64'}`}>
         <main className="px-4 sm:px-6 py-6">
           {children}
         </main>

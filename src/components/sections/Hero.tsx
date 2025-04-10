@@ -28,41 +28,40 @@ export default function Hero() {
           {/* Left column - Text Content */}
           <div className={`w-full md:w-1/2 md:pr-6 transition-all duration-700 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
-              Real Estate Brochures<br />
-              <span className="text-[#5169FE]">simplified</span>
+              {t("hero.title", "Real Estate Brochures")}<br />
+              <span className="text-[#5169FE]">{t("hero.subtitle", "simplified")}</span>
             </h1>
             
             <p className="mt-4 text-gray-700 text-base sm:text-lg">
-              With ExposeFlow, create stunning real estate marketing<br className="hidden sm:block" />
-              materials in minutes without design experience
+              {t("hero.description", "With ExposeFlow, create stunning real estate marketing materials in minutes without design experience")}
             </p>
             
             <ul className="mt-6 space-y-3">
               <li className="flex items-start gap-2.5">
                 <div className="flex-shrink-0 text-[#5169FE] mt-1">✓</div>
-                <span className="text-gray-700">Generate professional property descriptions with AI</span>
+                <span className="text-gray-700">{t("hero.feature1", "Generate professional property descriptions with AI")}</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <div className="flex-shrink-0 text-[#5169FE] mt-1">✓</div>
-                <span className="text-gray-700">Create beautiful layouts without graphic design skills</span>
+                <span className="text-gray-700">{t("hero.feature2", "Create beautiful layouts without graphic design skills")}</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <div className="flex-shrink-0 text-[#5169FE] mt-1">✓</div>
-                <span className="text-gray-700">Stand out from competitors with premium marketing materials</span>
+                <span className="text-gray-700">{t("hero.feature3", "Stand out from competitors with premium marketing materials")}</span>
               </li>
             </ul>
             
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <Link href="/dashboard">
                 <button className="px-5 py-2.5 bg-[#5169FE] text-white rounded-lg font-medium hover:bg-[#4058e0] transition-colors">
-                  Start creating
+                  {t("hero.startCreating", "Start creating")}
                 </button>
               </Link>
               <button
                 onClick={() => scrollToSection("demo")}
                 className="px-5 py-2.5 bg-white text-[#5169FE] border border-[#5169FE] rounded-lg font-medium hover:bg-gray-50 transition-colors"
               >
-                See Examples
+                {t("hero.seeExamples", "See Examples")}
               </button>
             </div>
           </div>

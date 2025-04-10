@@ -18,7 +18,6 @@ import {
 } from '@/components/dashboard/form-steps';
 import { availablePages, PageOption } from '@/components/dashboard/form-steps/PagesSelectionStep';
 import { processPropertyDescription } from '@/utils/ai-helpers';
-import { extractTitle, extractPrice, extractSpace, extractYear } from '@/utils/extractors';
 import mammoth from 'mammoth';
 import { toast } from 'react-hot-toast';
 import { verifyApiConnection } from '@/utils/test-api';
@@ -978,7 +977,7 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-wrap justify-between items-center mb-8">
           <div className="mr-auto">
-            <h1 className="text-3xl font-bold text-gray-900">My Brochures</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-2">Create and manage your real estate brochures</p>
           </div>
           
@@ -1123,62 +1122,55 @@ const Dashboard = () => {
           </form>
         </div>
         
-        {/* Projects List */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8">
-          <div className="flex items-center mb-8">
-            <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center mr-4">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-              </svg>
+        {/* Link to Brochures Page */}
+        {/* <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8 mb-12">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center mr-4">
+                <svg className="w-5 h-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">View Your Brochures</h2>
+                <p className="text-gray-600 mt-1">Access and manage all your existing brochures</p>
+              </div>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900">Your Brochures</h2>
+            
+            <Link
+              href="/brochures"
+              className="group relative inline-flex items-center overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-3 transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg focus:outline-none"
+            >
+              <span className="absolute right-0 -mt-12 h-32 w-8 translate-x-12 rotate-12 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40"></span>
+              <span className="relative flex items-center text-white font-medium">
+                View All Brochures
+                <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </span>
+            </Link>
           </div>
           
-          {projects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-              </svg>
-              <p className="text-gray-600 text-lg mb-2">You haven't created any brochures yet</p>
-              <p className="text-gray-500 mb-6 max-w-md">Create your first professional real estate brochure with our easy-to-use AI templates</p>
-              <button
-                onClick={() => router.push('/dashboard/new')}
-                className="group relative inline-flex items-center overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-3 transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg focus:outline-none"
-              >
-                <span className="absolute right-0 -mt-12 h-32 w-8 translate-x-12 rotate-12 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40"></span>
-                <span className="relative flex items-center text-white font-medium">
-                  <svg className="w-5 h-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
-                  Create Your First Brochure
-                </span>
-              </button>
+          <div className="mt-6 bg-gray-50 rounded-lg p-6 flex items-center justify-between">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-gray-800 font-medium">Your brochures have moved!</p>
+                <p className="text-gray-600 mt-1">We've created a dedicated page for all your brochures to make them easier to manage.</p>
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {projects.map(project => (
-                <Link 
-                  href={`/project/${project.id}`} 
-                  key={project.id}
-                  className="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:border-blue-300 transition-all duration-300 hover:shadow-md hover:shadow-blue-100 flex flex-col"
-                >
-                  <div className="h-40 bg-gradient-to-r from-blue-50 to-indigo-50 relative">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <svg className="w-16 h-16 text-blue-100" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/>
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  <div className="p-6 flex-grow">
-                    <h3 className="font-medium text-lg text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">{project.title}</h3>
-                    <p className="text-gray-500 text-sm mb-2">{project.address}</p>
-                  </div>
-                </Link>
-              ))}
+            
+            <div className="ml-4 flex-shrink-0">
+              <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                New
+              </span>
             </div>
-          )}
-        </div>
+          </div>
+        </div> */}
       </div>
     </div>
   );

@@ -23,8 +23,8 @@ const DashboardHeader = ({ userEmail, isMenuOpen, setIsMenuOpen, credits }: Dash
             type="button"
             className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 mr-2"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? "Close sidebar" : "Open sidebar"}
           >
-            <span className="sr-only">Open main menu</span>
             {isMenuOpen ? (
               <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -49,11 +49,22 @@ const DashboardHeader = ({ userEmail, isMenuOpen, setIsMenuOpen, credits }: Dash
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* User email display */}
-          <div className="hidden sm:flex items-center text-gray-600">
-            <span className="text-sm font-medium">
-              {userEmail || "Account"}
-            </span>
+          {/* Credits display in header */}
+          <div className="hidden sm:flex items-center px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+            <svg className="w-4 h-4 mr-1.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-medium text-gray-900 text-sm whitespace-nowrap">{credits ?? 0} Credits</span>
+          </div>
+
+          {/* User info dropdown */}
+          <div className="relative flex items-center">
+            <div className="flex items-center px-3 py-1.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+              <span className="max-w-[120px] truncate hidden sm:block">{userEmail}</span>
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium ml-2">
+                {userEmail ? userEmail[0].toUpperCase() : "U"}
+              </div>
+            </div>
           </div>
         </div>
       </div>
