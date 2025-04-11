@@ -101,65 +101,48 @@ export default function DocumentViewer({
           console.log('Added agent image:', images[1].substring(0, 50) + '...');
         }
         
-        // Create a direct mapping with explicit image names
-        // This ensures each image gets the correct placeholder name
-        let imageIndex = 2; // Start at index 2 (after logo and agent)
+        // Start with images after logo and agent photo
+        let imageIndex = 2;
         
-        // Map images based on selected pages
+        // Map images based on selected pages using a more reliable approach
         if (selectedPages) {
           console.log('Mapping images based on selected pages:', selectedPages);
           
-          // Project Overview (first content slide)
-          if (selectedPages['projectOverview'] && imageIndex < images.length) {
-            imageMap['image1'] = images[imageIndex++];
-            console.log('Added Project Overview image (image1)');
-          }
+          // Define page-to-image mapping based on exact requirements
+          const pageImageMapping: Record<string, string[]> = {
+            'projectOverview': ['image1'],
+            'buildingLayout': ['image2'],
+            'exteriorPhotos': ['image3', 'image4'],
+            'interiorPhotos': ['image5', 'image6'],
+            'floorPlan': ['image7'],
+            'energyCertificate': ['image8', 'image9'],
+            // Description and Terms & Conditions don't have images
+          };
           
-          // Building Layout Plan
-          if (selectedPages['buildingLayout'] && imageIndex < images.length) {
-            imageMap['image2'] = images[imageIndex++];
-            console.log('Added Building Layout image (image2)');
-          }
+          // Track available images (excluding logo and agent photo)
+          const availableImages = images.slice(2);
+          let availableImageIndex = 0;
           
-          // Exterior Photos (2 images)
-          if (selectedPages['exteriorPhotos']) {
-            if (imageIndex < images.length) {
-              imageMap['image3'] = images[imageIndex++];
-              console.log('Added Exterior Photo 1 (image3)');
-            }
-            if (imageIndex < images.length) {
-              imageMap['image4'] = images[imageIndex++];
-              console.log('Added Exterior Photo 2 (image4)');
-            }
-          }
+          // Only process the pages that actually have images according to requirements
+          const pagesWithImages = [
+            'projectOverview',
+            'buildingLayout',
+            'exteriorPhotos',
+            'interiorPhotos',
+            'floorPlan',
+            'energyCertificate'
+          ];
           
-          // Interior Photos (2 images)
-          if (selectedPages['interiorPhotos']) {
-            if (imageIndex < images.length) {
-              imageMap['image5'] = images[imageIndex++];
-              console.log('Added Interior Photo 1 (image5)');
-            }
-            if (imageIndex < images.length) {
-              imageMap['image6'] = images[imageIndex++];
-              console.log('Added Interior Photo 2 (image6)');
-            }
-          }
-          
-          // Floor Plan
-          if (selectedPages['floorPlan'] && imageIndex < images.length) {
-            imageMap['image7'] = images[imageIndex++];
-            console.log('Added Floor Plan image (image7)');
-          }
-          
-          // Energy Certificate (2 images)
-          if (selectedPages['energyCertificate']) {
-            if (imageIndex < images.length) {
-              imageMap['image8'] = images[imageIndex++];
-              console.log('Added Energy Certificate 1 (image8)');
-            }
-            if (imageIndex < images.length) {
-              imageMap['image9'] = images[imageIndex++];
-              console.log('Added Energy Certificate 2 (image9)');
+          // Process pages in order
+          for (const pageId of pagesWithImages) {
+            if (selectedPages[pageId] && pageImageMapping[pageId]) {
+              for (const imagePlaceholder of pageImageMapping[pageId]) {
+                if (availableImageIndex < availableImages.length) {
+                  imageMap[imagePlaceholder] = availableImages[availableImageIndex];
+                  console.log(`Added ${pageId} image (${imagePlaceholder}): ${availableImages[availableImageIndex].substring(0, 30)}...`);
+                  availableImageIndex++;
+                }
+              }
             }
           }
         }
@@ -236,51 +219,163 @@ export default function DocumentViewer({
     processDocument();
   }, [shouldProcess, projectId, placeholders, images, processedDocumentId, selectedPages]);
 
+  // Update the handleDocumentUpload function for the manual generation as well
+  const processDocumentManually = async () => {
+    if (!projectId || images.length === 0) {
+      setError('Please add at least one image before processing');
+      return;
+    }
+    
+    // If we already have a presentation, just use that instead of generating a new one
+    if (processedDocumentId) {
+      setIsEditMode(true); // Switch to edit mode
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Create a properly structured image map for the API - use the SAME logic as the automatic process
+      const imageMap: Record<string, string> = {};
+      
+      // Always include logo and agent photo
+      if (images.length > 0) {
+        imageMap['logo'] = images[0]; 
+        console.log('Manual process - Added logo image:', images[0].substring(0, 50) + '...');
+      }
+      
+      if (images.length > 1) {
+        imageMap['agent'] = images[1]; 
+        console.log('Manual process - Added agent image:', images[1].substring(0, 50) + '...');
+      }
+      
+      // Map images based on selected pages using the same improved approach
+      if (selectedPages) {
+        console.log('Manual process - Mapping images based on selected pages:', selectedPages);
+        
+        // Define page-to-image mapping based on exact requirements
+        const pageImageMapping: Record<string, string[]> = {
+          'projectOverview': ['image1'],
+          'buildingLayout': ['image2'],
+          'exteriorPhotos': ['image3', 'image4'],
+          'interiorPhotos': ['image5', 'image6'],
+          'floorPlan': ['image7'],
+          'energyCertificate': ['image8', 'image9'],
+          // Description and Terms & Conditions don't have images
+        };
+        
+        // Track available images (excluding logo and agent photo)
+        const availableImages = images.slice(2);
+        let availableImageIndex = 0;
+        
+        // Only process the pages that actually have images according to requirements
+        const pagesWithImages = [
+          'projectOverview',
+          'buildingLayout',
+          'exteriorPhotos',
+          'interiorPhotos',
+          'floorPlan',
+          'energyCertificate'
+        ];
+        
+        // Process pages in order
+        for (const pageId of pagesWithImages) {
+          if (selectedPages[pageId] && pageImageMapping[pageId]) {
+            for (const imagePlaceholder of pageImageMapping[pageId]) {
+              if (availableImageIndex < availableImages.length) {
+                imageMap[imagePlaceholder] = availableImages[availableImageIndex];
+                console.log(`Manual process - Added ${pageId} image (${imagePlaceholder}): ${availableImages[availableImageIndex].substring(0, 30)}...`);
+                availableImageIndex++;
+              }
+            }
+          }
+        }
+      }
+      
+      console.log("Manual process - Image map for API:", imageMap);
+      
+      const response = await fetch('/api/process-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          templateId: templateId,
+          placeholders: placeholders,
+          images: imageMap,
+          selectedPages: selectedPages // Also send the selectedPages
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setProcessedDocumentId(data.documentId);
+      setPreviewUrl(`https://docs.google.com/presentation/d/${data.documentId}/preview`);
+      // Add edit URL for direct Google Slides editing with proper tools
+      setEditUrl(`https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`);
+      
+      // Update database
+      const { error: updateError } = await supabase
+        .from('real_estate_projects')
+        .update({ 
+          presentation_id: data.documentId,
+          presentation_url: `https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`,
+          presentation_created_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+      
+      if (updateError) {
+        console.error('Error updating project with presentation info:', updateError);
+      }
+      
+    } catch (error: any) {
+      console.error(`Error processing presentation:`, error);
+      setError(error.message || `Failed to process presentation`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Add a new effect to handle image updates based on selected pages
   useEffect(() => {
     if (!selectedPages || !onImagesUpdate) return;
 
-    // Create a new array with only the images for selected pages
-    const filteredImages = [...images];
-    let newLength = 2; // Keep logo and agent photo
-
-    // Project Overview
-    if (selectedPages['projectOverview']) {
-      newLength = 3;
+    // Calculate required image count based on selected pages
+    // This calculation determines how many images will be needed for the presentation
+    let requiredImageCount = 2; // Start with 2 for logo and agent photo
+    
+    // Define how many images each page type requires based on exact requirements
+    const pageImageCounts: Record<string, number> = {
+      'projectOverview': 1,
+      'buildingLayout': 1,
+      'exteriorPhotos': 2,
+      'interiorPhotos': 2,
+      'floorPlan': 1,
+      'energyCertificate': 2,
+      // Description and Terms & Conditions don't have images, no entry needed
+    };
+    
+    // Count required images based on selected pages
+    for (const [pageId, isSelected] of Object.entries(selectedPages)) {
+      if (isSelected && pageImageCounts[pageId]) {
+        requiredImageCount += pageImageCounts[pageId];
+      }
     }
     
-    // Building Layout Plan
-    if (selectedPages['buildingLayout']) {
-      newLength = 4;
-    }
+    console.log(`Required image count based on selections: ${requiredImageCount}`);
     
-    // Exterior Photos
-    if (selectedPages['exteriorPhotos']) {
-      newLength = 6;
-    }
-    
-    // Interior Photos
-    if (selectedPages['interiorPhotos']) {
-      newLength = 8;
-    }
-    
-    // Floor Plan
-    if (selectedPages['floorPlan']) {
-      newLength = 9;
-    }
-    
-    // Energy Certificate
-    if (selectedPages['energyCertificate']) {
-      newLength = 11;
-    }
-
-    // Trim the array to only include images for selected pages
-    const updatedImages = filteredImages.slice(0, newLength);
-
-    // Update the parent component's state
-    if (JSON.stringify(updatedImages) !== JSON.stringify(images)) {
+    // If more images are provided than needed, trim the array
+    if (images.length > requiredImageCount) {
+      console.log(`Trimming images array from ${images.length} to ${requiredImageCount}`);
+      const updatedImages = images.slice(0, requiredImageCount);
       onImagesUpdate(updatedImages);
     }
+    
   }, [selectedPages, images, onImagesUpdate]);
 
   // Download the document as PDF
@@ -334,141 +429,6 @@ export default function DocumentViewer({
     } catch (error: any) {
       console.error(`Error downloading presentation as PDF:`, error);
       setError(error.message || `Failed to download presentation as PDF`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Process document manually
-  const processDocumentManually = async () => {
-    if (!projectId || images.length === 0) {
-      setError('Please add at least one image before processing');
-      return;
-    }
-    
-    // If we already have a presentation, just use that instead of generating a new one
-    if (processedDocumentId) {
-      setIsEditMode(true); // Switch to edit mode
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Create a properly structured image map for the API - use the SAME logic as the automatic process
-      const imageMap: Record<string, string> = {};
-      
-      // Always include logo and agent photo
-      if (images.length > 0) {
-        imageMap['logo'] = images[0]; 
-        console.log('Manual process - Added logo image:', images[0].substring(0, 50) + '...');
-      }
-      
-      if (images.length > 1) {
-        imageMap['agent'] = images[1]; 
-        console.log('Manual process - Added agent image:', images[1].substring(0, 50) + '...');
-      }
-      
-      // Create a direct mapping with explicit image names
-      // This ensures each image gets the correct placeholder name
-      let imageIndex = 2; // Start at index 2 (after logo and agent)
-      
-      // Use the exact same placeholder naming as the automatic process
-      // Project Overview
-      if (imageIndex < images.length) {
-        imageMap['image1'] = images[imageIndex++];
-        console.log('Manual process - Added Project Overview image (image1)');
-      }
-      
-      // Building Layout Plan
-      if (imageIndex < images.length) {
-        imageMap['image2'] = images[imageIndex++];
-        console.log('Manual process - Added Building Layout image (image2)');
-      }
-      
-      // Exterior Photos
-      if (imageIndex < images.length) {
-        imageMap['image3'] = images[imageIndex++];
-        console.log('Manual process - Added Exterior Photo 1 (image3)');
-      }
-      
-      if (imageIndex < images.length) {
-        imageMap['image4'] = images[imageIndex++];
-        console.log('Manual process - Added Exterior Photo 2 (image4)');
-      }
-      
-      // Interior Photos
-      if (imageIndex < images.length) {
-        imageMap['image5'] = images[imageIndex++];
-        console.log('Manual process - Added Interior Photo 1 (image5)');
-      }
-      
-      if (imageIndex < images.length) {
-        imageMap['image6'] = images[imageIndex++];
-        console.log('Manual process - Added Interior Photo 2 (image6)');
-      }
-      
-      // Floor Plan
-      if (imageIndex < images.length) {
-        imageMap['image7'] = images[imageIndex++];
-        console.log('Manual process - Added Floor Plan image (image7)');
-      }
-      
-      // Energy Certificate
-      if (imageIndex < images.length) {
-        imageMap['image8'] = images[imageIndex++];
-        console.log('Manual process - Added Energy Certificate 1 (image8)');
-      }
-      
-      if (imageIndex < images.length) {
-        imageMap['image9'] = images[imageIndex++];
-        console.log('Manual process - Added Energy Certificate 2 (image9)');
-      }
-      
-      console.log("Manual process - Image map for API:", imageMap);
-      
-      const response = await fetch('/api/process-document', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          templateId: templateId,
-          placeholders: placeholders,
-          images: imageMap,
-          selectedPages: selectedPages // Also send the selectedPages
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setProcessedDocumentId(data.documentId);
-      setPreviewUrl(`https://docs.google.com/presentation/d/${data.documentId}/preview`);
-      // Add edit URL for direct Google Slides editing with proper tools
-      setEditUrl(`https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`);
-      
-      // Update database
-      const { error: updateError } = await supabase
-        .from('real_estate_projects')
-        .update({ 
-          presentation_id: data.documentId,
-          presentation_url: `https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`,
-          presentation_created_at: new Date().toISOString()
-        })
-        .eq('id', projectId);
-      
-      if (updateError) {
-        console.error('Error updating project with presentation info:', updateError);
-      }
-      
-    } catch (error: any) {
-      console.error(`Error processing presentation:`, error);
-      setError(error.message || `Failed to process presentation`);
     } finally {
       setLoading(false);
     }
