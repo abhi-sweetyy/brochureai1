@@ -1,5 +1,4 @@
 import BasicInfoStep from './BasicInfoStep';
-import PropertyDetailsStep from './PropertyDetailsStep';
 import AmenitiesStep from './AmenitiesStep';
 import ContactInfoStep from './ContactInfoStep';
 import ReviewStep from './ReviewStep';
@@ -9,7 +8,6 @@ import PagesSelectionStep from './PagesSelectionStep';
 
 export {
   BasicInfoStep,
-  PropertyDetailsStep,
   AmenitiesStep,
   ContactInfoStep,
   ReviewStep,

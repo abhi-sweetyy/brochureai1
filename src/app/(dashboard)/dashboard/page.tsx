@@ -8,7 +8,6 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import Link from "next/link";
 import {
   BasicInfoStep,
-  PropertyDetailsStep,
   AmenitiesStep,
   ContactInfoStep,
   ReviewStep,
@@ -28,7 +27,6 @@ const FORM_STEPS = [
   { title: "Template", description: "Select a template for your project" },
   { title: "Pages", description: "Select pages to include" },
   { title: "Basic Info", description: "Enter basic information about your project" },
-  { title: "Property Details", description: "Enter property specifications" },
   { title: "Images", description: "Upload images for your project" },
   { title: "Amenities", description: "Add amenities and features" },
   { title: "Contact Info", description: "Add contact information" },
@@ -852,14 +850,6 @@ const Dashboard = () => {
         );
       case 3:
         return (
-          <PropertyDetailsStep 
-            placeholders={placeholders} 
-            handleInputChange={handleInputChange}
-            autoFilledFields={autoFilledFields}
-          />
-        );
-      case 4:
-        return (
           <ImagesStep
             uploadedImages={uploadedImages}
             logoUrl={logoUrl}
@@ -868,14 +858,14 @@ const Dashboard = () => {
             selectedPages={selectedPages}
           />
         );
-      case 5:
+      case 4:
         return (
           <AmenitiesStep 
             placeholders={placeholders}
             handleInputChange={handleInputChange}
           />
         );
-      case 6:
+      case 5:
         return (
           <ContactInfoStep 
             placeholders={placeholders} 
@@ -891,13 +881,13 @@ const Dashboard = () => {
             ]}
           />
         );
-      case 7:
+      case 6:
         return (
-          <ReviewStep 
-            placeholders={placeholders} 
-            uploadStage={uploadStage} 
-            uploadedImages={uploadedImages} 
-            logoUrl={logoUrl} 
+          <ReviewStep
+            placeholders={placeholders}
+            uploadStage={uploadStage}
+            uploadedImages={uploadedImages}
+            logoUrl={logoUrl}
             selectedTemplate={selectedTemplate || undefined}
           />
         );
