@@ -1142,6 +1142,84 @@ export default function ImageUploader({
               <div className="bg-[#222A38] rounded-lg p-3 mb-3">
                 <h3 className="text-base font-medium text-white mb-3">Adjustments</h3>
                 
+                {/* Add brightness and contrast sliders back */}
+                <div className="mb-3">
+                  <div className="flex justify-between">
+                    <label className="text-xs text-gray-400 block mb-1">Brightness</label>
+                    <span className="text-xs text-gray-500">{editorState.brightness}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-50"
+                    max="100"
+                    value={editorState.brightness}
+                    onChange={(e) => {
+                      const newValue = parseFloat(e.target.value);
+                      setEditorState({
+                        ...editorState,
+                        brightness: newValue
+                      });
+                      
+                      if (konvaImageRef.current) {
+                        konvaImageRef.current.brightness(newValue / 100);
+                        konvaImageRef.current.getLayer()?.batchDraw();
+                      }
+                    }}
+                    className="w-full range-slider"
+                    style={{
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                      height: '10px',
+                      background: 'linear-gradient(to right, #4488ff 0%, #4488ff ' + 
+                        ((editorState.brightness + 50) / 150 * 100) + 
+                        '%, #374151 ' + 
+                        ((editorState.brightness + 50) / 150 * 100) + 
+                        '%, #374151 100%)',
+                      borderRadius: '5px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+                <div className="mb-4">
+                  <div className="flex justify-between">
+                    <label className="text-xs text-gray-400 block mb-1">Contrast</label>
+                    <span className="text-xs text-gray-500">{editorState.contrast}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-50"
+                    max="100"
+                    value={editorState.contrast}
+                    onChange={(e) => {
+                      const newValue = parseFloat(e.target.value);
+                      setEditorState({
+                        ...editorState,
+                        contrast: newValue
+                      });
+                      
+                      if (konvaImageRef.current) {
+                        konvaImageRef.current.contrast(1 + newValue / 25);
+                        konvaImageRef.current.getLayer()?.batchDraw();
+                      }
+                    }}
+                    className="w-full range-slider"
+                    style={{
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                      height: '10px',
+                      background: 'linear-gradient(to right, #4488ff 0%, #4488ff ' + 
+                        ((editorState.contrast + 50) / 150 * 100) + 
+                        '%, #374151 ' + 
+                        ((editorState.contrast + 50) / 150 * 100) + 
+                        '%, #374151 100%)',
+                      borderRadius: '5px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+                
                 {/* Replace brightness, contrast and blur sliders with a single enhance button */}
                 <div className="mb-4">
                   <button
@@ -1189,11 +1267,12 @@ export default function ImageUploader({
                     type="range"
                     min="1"
                     max="20"
+                    step="0.1"
                     value={editorState.blurBrushStrength}
                     onChange={(e) => {
                       setEditorState({
                         ...editorState,
-                        blurBrushStrength: parseInt(e.target.value)
+                        blurBrushStrength: parseFloat(e.target.value)
                       });
                     }}
                     className="w-full range-slider"
