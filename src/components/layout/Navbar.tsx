@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/app/contexts/LanguageContext"; // Adjust path as needed
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { t } = useTranslation();
+  const { currentLanguage, changeLanguage } = useLanguage();
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
   // Function to scroll to sections
   const scrollToSection = (sectionId: string) => {
@@ -17,6 +20,18 @@ export default function Navbar() {
       element.scrollIntoView({ behavior: "smooth" });
     }
     setIsMobileMenuOpen(false);
+  };
+
+  // Language options with proper flag image paths
+  const languages = [
+    { code: "en", flag: "/flags/en.png" },
+    { code: "de", flag: "/flags/de.png" },
+  ];
+
+  // Change language function
+  const handleLanguageChange = (langCode: string) => {
+    changeLanguage(langCode);
+    setIsLanguageDropdownOpen(false);
   };
 
   // Handle scroll events to change navbar appearance
@@ -33,6 +48,31 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Click outside to close language dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        languageDropdownRef.current &&
+        !languageDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLanguageDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Effect to load saved language preference on initial load
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedLanguage = localStorage.getItem("preferred-language");
+      if (savedLanguage && savedLanguage !== currentLanguage) {
+        changeLanguage(savedLanguage);
+      }
+    }
+  }, []);
+
   // Navigation items
   const navItems = [
     { label: t("features"), id: "features" },
@@ -42,11 +82,11 @@ export default function Navbar() {
   ];
 
   return (
-    <nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled 
-          ? 'bg-white shadow-md py-2' 
-          : 'bg-white/90 backdrop-blur-sm py-3'
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 shadow ${
+        scrolled
+          ? "bg-white shadow-md py-2"
+          : "bg-white/90 backdrop-blur-sm py-3"
       }`}
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center px-4 md:px-8">
@@ -54,7 +94,7 @@ export default function Navbar() {
           {/* Logo and Brand */}
           <div
             className="flex items-center cursor-pointer transition-transform hover:scale-105 duration-200"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
             <img
               src="/favicon.png"
@@ -80,18 +120,76 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3 md:gap-4">
-          {/* Language Switcher Component */}
-          <LanguageSwitcher />
+          {/* Language Selector - Fixed width */}
+          <div className="relative" ref={languageDropdownRef}>
+            <button
+              onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+              className="flex items-center justify-between w-20 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-[#171717] transition-colors"
+              aria-label="Select language"
+            >
+              <div className="flex items-center">
+                <img
+                  src={
+                    languages.find((lang) => lang.code === currentLanguage)
+                      ?.flag || "/flags/en.png"
+                  }
+                  alt={`${currentLanguage} flag`}
+                  className="w-5 h-4 object-cover"
+                />
+                <span className="ml-1">{currentLanguage.toUpperCase()}</span>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-4 w-4 transition-transform duration-200 ${isLanguageDropdownOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
 
-          {/* Login button */}
+            {/* Language Dropdown with animation */}
+            <div
+              className={`absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg overflow-hidden z-50 border border-gray-200 transition-all duration-200 origin-top-right ${
+                isLanguageDropdownOpen
+                  ? "transform scale-100 opacity-100"
+                  : "transform scale-95 opacity-0 pointer-events-none"
+              }`}
+            >
+              {languages.map((language) => (
+                <button
+                  key={language.code}
+                  onClick={() => handleLanguageChange(language.code)}
+                  className={`flex items-center w-full px-4 py-2.5 text-sm text-left hover:bg-gray-100 transition-colors ${
+                    currentLanguage === language.code ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <img
+                    src={language.flag}
+                    alt={`${language.code} flag`}
+                    className="w-5 h-4 object-cover mr-2"
+                  />
+                  <span className="text-gray-600">
+                    {language.code.toUpperCase()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Login button - visible on desktop only */}
           <Link href="/dashboard" className="hidden sm:block">
             <button className="bg-white hover:bg-gray-100 text-[#5169FE] px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm border border-[#5169FE] hover:shadow-sm">
               {t("login")}
             </button>
           </Link>
 
-          {/* Signup button */}
-          <Link href="/dashboard">
+          {/* Signup button - visible on desktop only */}
+          <Link href="/dashboard" className="hidden md:block">
             <button className="bg-[#5169FE] hover:bg-[#4058e0] text-white px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm whitespace-nowrap border border-[#5169FE] hover:shadow-md">
               {t("getStarted")}
             </button>
@@ -104,19 +202,19 @@ export default function Navbar() {
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
             <div className="w-6 h-5 relative">
-              <span 
+              <span
                 className={`absolute h-0.5 w-6 bg-gray-800 transform transition-all duration-300 ${
-                  isMobileMenuOpen ? 'rotate-45 top-2.5' : 'top-0'
+                  isMobileMenuOpen ? "rotate-45 top-2.5" : "top-0"
                 }`}
               ></span>
-              <span 
+              <span
                 className={`absolute h-0.5 bg-gray-800 transform transition-all duration-300 ${
-                  isMobileMenuOpen ? 'opacity-0 w-0' : 'opacity-100 w-6 top-2'
+                  isMobileMenuOpen ? "opacity-0 w-0" : "opacity-100 w-6 top-2"
                 }`}
               ></span>
-              <span 
+              <span
                 className={`absolute h-0.5 w-6 bg-gray-800 transform transition-all duration-300 ${
-                  isMobileMenuOpen ? '-rotate-45 top-2.5' : 'top-4'
+                  isMobileMenuOpen ? "-rotate-45 top-2.5" : "top-4"
                 }`}
               ></span>
             </div>
@@ -125,9 +223,9 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Navigation Menu with animation */}
-      <div 
+      <div
         className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-          isMobileMenuOpen ? 'max-h-80' : 'max-h-0'
+          isMobileMenuOpen ? "max-h-96" : "max-h-0"
         }`}
       >
         <div className="bg-white px-4 pb-4 pt-2 shadow-inner">
@@ -144,8 +242,15 @@ export default function Navbar() {
 
             {/* Mobile-only login link */}
             <Link href="/dashboard">
-              <button className="text-left py-2.5 px-3 text-[#5169FE] font-medium rounded-lg hover:bg-gray-50 transition-colors sm:hidden w-full">
+              <button className="text-left py-2.5 px-3 text-[#5169FE] font-medium rounded-lg hover:bg-gray-50 transition-colors w-full">
                 {t("login")}
+              </button>
+            </Link>
+
+            {/* "Jetzt starten" button moved to mobile menu */}
+            <Link href="/dashboard">
+              <button className="text-left py-2.5 px-3 bg-[#5169FE] text-white font-medium rounded-lg hover:bg-[#4058e0] transition-colors w-full">
+                {t("getStarted")}
               </button>
             </Link>
           </div>

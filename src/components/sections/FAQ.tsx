@@ -7,7 +7,7 @@ export default function FAQ() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const { t } = useTranslation();
 
-  // FAQ data
+  // FAQ data with reordered questions
   const faqs = [
     {
       question: t(
@@ -21,12 +21,12 @@ export default function FAQ() {
     },
     {
       question: t(
-        "faq.items.experience.question",
-        "Do I need design experience to use ExposeFlow?",
+        "faq.items.branding.question",
+        "Can I add my brokerage's branding to the brochures?",
       ),
       answer: t(
-        "faq.items.experience.answer",
-        "Not at all! ExposeFlow is specifically designed for real estate professionals with no design experience. Our templates and AI-powered tools handle all the design work for you, so you can create professional-looking brochures in minutes.",
+        "faq.items.branding.answer",
+        "Yes! ExposeFlow allows you to add your logo, custom colors, contact information, and other branding elements to ensure all your marketing materials are consistent with your brand identity.",
       ),
     },
     {
@@ -49,26 +49,6 @@ export default function FAQ() {
         "You can download your brochures as high-resolution PDFs ready for printing, web-optimized PDFs for digital sharing, or as image files (JPEG/PNG) for use in social media and other online platforms.",
       ),
     },
-    {
-      question: t(
-        "faq.items.limits.question",
-        "How many properties can I create brochures for?",
-      ),
-      answer: t(
-        "faq.items.limits.answer",
-        "The number of brochures you can create depends on your subscription plan. Our Basic plan allows up to 10 brochures per month, while our Professional and Enterprise plans offer unlimited brochure creation.",
-      ),
-    },
-    {
-      question: t(
-        "faq.items.branding.question",
-        "Can I add my brokerage's branding to the brochures?",
-      ),
-      answer: t(
-        "faq.items.branding.answer",
-        "Yes! ExposeFlow allows you to add your logo, custom colors, contact information, and other branding elements to ensure all your marketing materials are consistent with your brand identity.",
-      ),
-    },
   ];
 
   const toggleFAQ = (index: number) => {
@@ -85,7 +65,7 @@ export default function FAQ() {
           <div
             key={index}
             style={{
-              backgroundColor: openFaqIndex === index ? "#EAEDFF" : "#F8F8FC",
+              backgroundColor: openFaqIndex === index ? "#EDF0FF" : "#F8F8FC",
             }}
             className="rounded-lg overflow-hidden transition-all duration-200 group"
           >

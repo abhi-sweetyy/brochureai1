@@ -19,13 +19,13 @@ export default function LanguageSwitcher() {
   const languages: LanguageOption[] = [
     { 
       code: "en", 
-      name: "English",
-      flag: "/images/flags/en.svg"
+      name: "EN",
+      flag: "/images/flags/en.png"
     },
     { 
       code: "de", 
-      name: "Deutsch",
-      flag: "/images/flags/de.svg"
+      name: "DE",
+      flag: "/images/flags/de.png"
     },
   ];
 
