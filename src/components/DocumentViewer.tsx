@@ -46,7 +46,7 @@ export default function DocumentViewer({
     return `hl=${lang}`;
   };
 
-  // Create URL with language parameter
+  // Create URL with language parameter - add direct 'lang' parameter which is more reliable
   const createUrlWithLanguage = (baseUrl: string) => {
     // Extract the base URL without parameters
     const urlBase = baseUrl.split('?')[0];
@@ -58,9 +58,86 @@ export default function DocumentViewer({
     // Set the language parameter (overrides any existing hl parameter)
     const lang = i18n.language?.startsWith('de') ? 'de' : 'en';
     params.set('hl', lang);
+    params.set('lang', lang); // Adding another language parameter that might work
+    
+    // For fullscreen edit mode, force parameters that ensure language is applied
+    if (baseUrl.includes('/edit')) {
+      params.set('usp', 'sharing'); // Use sharing mode which respects language better
+    }
     
     // Reconstruct the URL with all parameters
     return `${urlBase}?${params.toString()}`;
+  };
+
+  // Reference to iframe element
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  
+  // Force the language setting via JavaScript after iframe loads
+  useEffect(() => {
+    // Only apply to iframe when in edit mode
+    if (isEditMode && iframeRef.current) {
+      console.log("Setting up iframe language enforcement");
+      
+      // Function to enforce language on iframe
+      const enforceLanguage = () => {
+        const iframe = iframeRef.current;
+        if (iframe && iframe.src && iframe.src.includes("docs.google.com/presentation")) {
+          try {
+            const currentLang = i18n.language || 'en';
+            console.log("Enforcing language on iframe:", currentLang);
+            const url = new URL(iframe.src);
+            
+            // Set language parameter based on current language
+            url.searchParams.set("hl", currentLang);
+            
+            // For German, add additional parameters
+            if (currentLang.startsWith('de')) {
+              url.searchParams.set("ui", "2");
+              url.searchParams.set("authuser", "0");
+            }
+            
+            // Update the iframe src
+            console.log("Updated iframe URL:", url.toString());
+            iframe.src = url.toString();
+          } catch (error) {
+            console.error("Error enforcing language on iframe:", error);
+          }
+        }
+      };
+      
+      // Try immediately and also after a delay to ensure iframe is fully loaded
+      enforceLanguage();
+      const timer = setTimeout(enforceLanguage, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isEditMode, i18n.language, editUrl]);
+  
+  // Function to directly navigate based on current language
+  const openEditUrlInNewTab = () => {
+    if (processedDocumentId) {
+      const currentLang = i18n.language || 'en';
+      
+      if (currentLang.startsWith('de')) {
+        // For German, use our custom launcher
+        const launcherUrl = `/german-slides.html?id=${processedDocumentId}`;
+        window.open(launcherUrl, '_blank');
+      } else if (editUrl) {
+        // For English, use the standard URL
+        window.open(editUrl, '_blank');
+      }
+    }
+  };
+  
+  // Create a URL for the edit button that respects the current language
+  const getEditUrl = () => {
+    const currentLang = i18n.language || 'en';
+    
+    if (currentLang.startsWith('de') && processedDocumentId) {
+      return `/german-slides.html?id=${processedDocumentId}`;
+    } else {
+      return editUrl || '';
+    }
   };
 
   // Update URLs whenever language changes
@@ -209,7 +286,8 @@ export default function DocumentViewer({
             templateId: templateId,
             placeholders: placeholders,
             images: imageMap,
-            selectedPages: selectedPages
+            selectedPages: selectedPages,
+            language: i18n.language // Pass the current language to the API
           }),
         });
         
@@ -218,17 +296,14 @@ export default function DocumentViewer({
           throw new Error(errorData.message || `Server error: ${response.status}`);
         }
         
-        const data = await response.json();
+        const { data } = await response.json();
         
         // Store the document ID for later use (e.g., downloading)
         setProcessedDocumentId(data.documentId);
         
-        // Create URLs with language parameter
-        const basePreviewUrl = `https://docs.google.com/presentation/d/${data.documentId}/preview`;
-        const baseEditUrl = `https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`;
-        
-        setPreviewUrl(createUrlWithLanguage(basePreviewUrl));
-        setEditUrl(createUrlWithLanguage(baseEditUrl));
+        // Use the URLs directly from the API response - these already have language parameters
+        setPreviewUrl(data.viewUrl);
+        setEditUrl(data.editUrl);
         
         // After successful presentation generation and database update
         if (data.documentId) {
@@ -354,7 +429,8 @@ export default function DocumentViewer({
           templateId: templateId,
           placeholders: placeholders,
           images: imageMap,
-          selectedPages: selectedPages // Also send the selectedPages
+          selectedPages: selectedPages, // Also send the selectedPages
+          language: i18n.language // Pass the current language to the API
         }),
       });
       
@@ -363,15 +439,12 @@ export default function DocumentViewer({
         throw new Error(errorData.message || `Server error: ${response.status}`);
       }
       
-      const data = await response.json();
+      const { data } = await response.json();
       setProcessedDocumentId(data.documentId);
       
-      // Create URLs with language parameter
-      const basePreviewUrl = `https://docs.google.com/presentation/d/${data.documentId}/preview`;
-      const baseEditUrl = `https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`;
-      
-      setPreviewUrl(createUrlWithLanguage(basePreviewUrl));
-      setEditUrl(createUrlWithLanguage(baseEditUrl));
+      // Use the URLs directly from the API response - these already have language parameters
+      setPreviewUrl(data.viewUrl);
+      setEditUrl(data.editUrl);
       
       // Update database
       const { error: updateError } = await supabase
@@ -713,21 +786,20 @@ export default function DocumentViewer({
   };
 
   // If in fullscreen mode, render a fixed position overlay
-  if (isFullScreen && editUrl) {
-    // Parse the existing URL and ensure language parameter is properly set
-    const baseUrl = editUrl.split('?')[0];
-    const queryParams = editUrl.includes('?') ? editUrl.split('?')[1] : '';
-    const params = new URLSearchParams(queryParams);
+  if (isFullScreen && processedDocumentId) {
+    // Build URL based on current language
+    const currentLang = i18n.language || 'en';
+    let fullscreenUrl;
     
-    // Set the language parameter and add embedded mode parameters
-    const lang = i18n.language?.startsWith('de') ? 'de' : 'en';
-    params.set('hl', lang);
-    params.set('embedded', 'true');
-    params.set('rm', 'embedded');
+    if (currentLang.startsWith('de')) {
+      // For German, use same parameters as English but with German language
+      fullscreenUrl = `https://docs.google.com/presentation/d/${processedDocumentId}/edit?hl=de&usp=sharing&rm=demo&ui=2&authuser=0&embedded=true`;
+    } else {
+      // For English, standard parameters
+      fullscreenUrl = `https://docs.google.com/presentation/d/${processedDocumentId}/edit?hl=en&usp=sharing&rm=demo&embedded=true`;
+    }
     
-    const enhancedEditUrl = `${baseUrl}?${params.toString()}`;
-    
-    console.log("Using enhanced fullscreen edit URL with language:", enhancedEditUrl);
+    console.log(`Using enhanced fullscreen URL (${currentLang}):`, fullscreenUrl);
     
     return (
       <div 
@@ -748,7 +820,7 @@ export default function DocumentViewer({
         }}
       >
         <iframe 
-          src={enhancedEditUrl}
+          src={fullscreenUrl}
           style={{
             width: '100%',
             height: '100%',
@@ -881,7 +953,8 @@ export default function DocumentViewer({
         ) : previewUrl ? (
           <>
             <iframe 
-              src={isEditMode ? editUrl || '' : previewUrl}
+              ref={iframeRef}
+              src={isEditMode ? getEditUrl() : (previewUrl || '')}
               className="w-full h-full border-0 min-h-[600px]"
               title={isEditMode ? t('documentViewer.presentationEditor') : t('documentViewer.presentationPreview')}
               allowFullScreen

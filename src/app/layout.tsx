@@ -5,6 +5,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import SupabaseProvider from "@/providers/SupabaseProvider";
 import UserProvider from "@/providers/UserProvider";
 import { Providers } from "./providers";
+import Script from "next/script";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -34,6 +35,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 						border: none !important;
 					}
 				`}</style>
+				<Script src="/german-slides-embed.js" strategy="beforeInteractive" />
 			</head>
 			<body
 				className={`${font.className} overflow-x-hidden w-full m-0 p-0 border-0`}

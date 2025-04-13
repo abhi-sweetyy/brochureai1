@@ -462,7 +462,9 @@ const initI18n = async () => {
             "documentViewer.presentationPreview": "Presentation Preview",
             "documentViewer.noBrochurePreview": "No Brochure preview available.",
             "documentViewer.clickGenerateBrochure": "Click \"Generate Brochure\" to create a presentation with your data.",
-            "documentViewer.exitFullScreen": "Exit Full Screen"
+            "documentViewer.exitFullScreen": "Exit Full Screen",
+            "documentViewer.openInNewTab": "Open in New Tab",
+            "documentViewer.openGoogleSlides": "Open Google Slides"
           },
         },
         de: {
@@ -933,7 +935,9 @@ const initI18n = async () => {
             "documentViewer.presentationPreview": "Präsentationsvorschau",
             "documentViewer.noBrochurePreview": "Keine Broschürenvorschau verfügbar.",
             "documentViewer.clickGenerateBrochure": "Klicken Sie auf \"Broschüre erstellen\", um eine Präsentation mit Ihren Daten zu erstellen.",
-            "documentViewer.exitFullScreen": "Vollbildmodus beenden"
+            "documentViewer.exitFullScreen": "Vollbildmodus beenden",
+            "documentViewer.openInNewTab": "In neuem Tab öffnen",
+            "documentViewer.openGoogleSlides": "Google Präsentationen öffnen"
           },
         },
       },

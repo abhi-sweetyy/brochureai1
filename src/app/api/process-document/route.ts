@@ -86,7 +86,11 @@ export async function POST(request: Request) {
       );
     }
     
-    const { templateId, placeholders, images, selectedPages } = body;
+    const { templateId, placeholders, images, selectedPages, language } = body;
+    
+    // Get the language or default to 'en'
+    const userLanguage = language || 'en';
+    console.log(`Using language: ${userLanguage}`);
     
     if (!templateId) {
       return NextResponse.json(
@@ -114,7 +118,14 @@ export async function POST(request: Request) {
     const copyResponse = await drive.files.copy({
       fileId: templateId,
       requestBody: {
-        name: `Filled Presentation - ${new Date().toISOString()}`
+        name: userLanguage === 'de' ? 
+          `Immobilien-Präsentation - ${new Date().toISOString()}` : 
+          `Property Presentation - ${new Date().toISOString()}`,
+        properties: {
+          'language': userLanguage,
+          'preferredLanguage': userLanguage,
+          'locale': userLanguage === 'de' ? 'de_DE' : 'en_US'
+        }
       }
     });
     
@@ -128,12 +139,26 @@ export async function POST(request: Request) {
     
     console.log("Making presentation publicly accessible:", newPresentationId);
     
-    // Make the presentation publicly accessible with editing permissions
+    // Make the presentation publicly accessible with editing permissions and set language again
     await drive.permissions.create({
       fileId: newPresentationId,
       requestBody: {
         role: 'writer',
         type: 'anyone'
+      }
+    });
+    
+    // Set language property on file metadata (may help with language settings)
+    console.log(`Setting language property to ${userLanguage} on presentation`);
+    await drive.files.update({
+      fileId: newPresentationId,
+      requestBody: {
+        properties: {
+          'language': userLanguage,
+          'preferredLanguage': userLanguage,
+          'locale': userLanguage === 'de' ? 'de_DE' : 'en_US',
+          'ui_language': userLanguage
+        }
       }
     });
     
@@ -365,10 +390,26 @@ export async function POST(request: Request) {
     
     console.log("Presentation processed successfully");
     
+    // Build URLs with explicit language parameters - make language the primary parameter
+    const userLang = userLanguage === 'de' ? 'de' : 'en';
+    
+    // For German, create a URL that forces German interface
+    let editUrl = '';
+    if (userLang === 'de') {
+      // For German, use these specific parameters that are known to force German UI
+      editUrl = `https://docs.google.com/presentation/d/${newPresentationId}/edit?hl=de&usp=sharing&ui=2&authuser=0`;
+    } else {
+      // For English, use standard parameters
+      editUrl = `https://docs.google.com/presentation/d/${newPresentationId}/edit?hl=en&usp=sharing`;
+    }
+    
+    const viewUrl = `https://docs.google.com/presentation/d/${newPresentationId}/view?hl=${userLang}`;
+    
     return NextResponse.json({ 
       documentId: newPresentationId,
-      viewUrl: `https://docs.google.com/presentation/d/${newPresentationId}/view`,
-      editUrl: `https://docs.google.com/presentation/d/${newPresentationId}/edit`
+      viewUrl: viewUrl,
+      editUrl: editUrl,
+      language: userLanguage
     });
   } catch (error: any) {
     console.error('Error processing presentation:', error);
