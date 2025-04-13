@@ -21,16 +21,17 @@ import mammoth from 'mammoth';
 import { toast } from 'react-hot-toast';
 import { verifyApiConnection } from '@/utils/test-api';
 import ImageUploader from '@/components/ImageUploader';
+import { useTranslation } from 'react-i18next';
 
 // Define the steps for the form
-const FORM_STEPS = [
-  { title: "Template", description: "Select a template for your project" },
-  { title: "Pages", description: "Select pages to include" },
-  { title: "Basic Info", description: "Enter basic information about your project" },
-  { title: "Images", description: "Upload images for your project" },
-  { title: "Amenities", description: "Add amenities and features" },
-  { title: "Contact Info", description: "Add contact information" },
-  { title: "Review", description: "Review your project before creating" }
+const getFormSteps = (t: any) => [
+  { title: t('formSteps.template.title'), description: t('formSteps.template.description') },
+  { title: t('formSteps.pages.title'), description: t('formSteps.pages.description') },
+  { title: t('formSteps.basicInfo.title'), description: t('formSteps.basicInfo.description') },
+  { title: t('formSteps.images.title'), description: t('formSteps.images.description') },
+  { title: t('formSteps.amenities.title'), description: t('formSteps.amenities.description') },
+  { title: t('formSteps.contactInfo.title'), description: t('formSteps.contactInfo.description') },
+  { title: t('formSteps.review.title'), description: t('formSteps.review.description') }
 ];
 
 interface Project {
@@ -81,6 +82,9 @@ interface PropertyPlaceholders {
 }
 
 const Dashboard = () => {
+  const { t } = useTranslation();
+  const FORM_STEPS = getFormSteps(t);
+  
   const { session, isLoading } = useSessionContext();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -205,26 +209,26 @@ const Dashboard = () => {
         
         if (!result.success) {
           // Show specific error messages based on the error type
-          let errorMessage = "API connection failed.";
+          let errorMessage = t('api.connectionFailed');
           
           switch (result.error) {
             case "API_KEY_MISSING":
-              errorMessage = "OpenRouter API key is missing. Please add it to your .env file.";
+              errorMessage = t('api.keyMissing');
               break;
             case "API_KEY_INVALID_FORMAT":
-              errorMessage = "OpenRouter API key has invalid format. It should start with 'sk-or-v1-'.";
+              errorMessage = t('api.keyInvalidFormat');
               break;
             case "API_KEY_INVALID":
-              errorMessage = "Invalid OpenRouter API key. Please check your credentials.";
+              errorMessage = t('api.keyInvalid');
               break;
             case "API_RATE_LIMIT":
-              errorMessage = "OpenRouter API rate limit exceeded. Please try again later.";
+              errorMessage = t('api.rateLimit');
               break;
             case "NETWORK_ERROR":
-              errorMessage = "Network error connecting to OpenRouter API. Check your internet connection.";
+              errorMessage = t('api.networkError');
               break;
             default:
-              errorMessage = result.message || "OpenRouter API connection failed.";
+              errorMessage = result.message || t('api.connectionFailed');
           }
           
           toast.error(errorMessage, { 
@@ -236,7 +240,7 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error("Error checking API connection:", error);
-        toast.error("Failed to verify API connection", { 
+        toast.error(t('api.verifyFailed'), { 
           id: "api-connection",
           duration: 10000
         });
@@ -244,7 +248,7 @@ const Dashboard = () => {
     };
     
     checkApiConnection();
-  }, []);
+  }, [t]);
 
   // Fetch projects
   const fetchProjects = async () => {
@@ -393,17 +397,17 @@ const Dashboard = () => {
   const goToNextStep = () => {
     // Validate current step before proceeding
     if (currentStep === 0 && !selectedTemplate) {
-      setError('Please select a template to continue');
+      setError(t('error.selectTemplate'));
       return;
     }
     
     if (currentStep === 1 && !selectedPages) {
-      setError('Please select pages to continue');
+      setError(t('error.selectPages'));
       return;
     }
     
     if (currentStep === 2 && !placeholders.title) {
-      setError('Project title is required');
+      setError(t('error.titleRequired'));
       return;
     }
     
@@ -453,7 +457,7 @@ const Dashboard = () => {
   const handleDocumentUpload = async (text: string) => {
     try {
       // Display loading toast
-      toast.loading("Extracting property information...", { id: "ai-extraction" });
+      toast.loading(t('document.extracting'), { id: "ai-extraction" });
       
       // Store raw text for later use
       setRawPropertyData(text);
@@ -463,7 +467,7 @@ const Dashboard = () => {
       // Check API key first
       const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
       if (!apiKey) {
-        toast.error("API key not configured", { id: "ai-extraction" });
+        toast.error(t('api.keyMissing'), { id: "ai-extraction" });
         return;
       }
       
@@ -473,7 +477,7 @@ const Dashboard = () => {
       
       // Check if we got valid results
       if (!result) {
-        toast.error("Failed to extract information from document", { id: "ai-extraction" });
+        toast.error(t('document.extractFailed'), { id: "ai-extraction" });
         return;
       }
       
@@ -502,7 +506,7 @@ const Dashboard = () => {
       
       // Show success message
       if (filledFields.length > 0) {
-        toast.success(`Successfully extracted ${filledFields.length} field${filledFields.length > 1 ? 's' : ''}`, { id: "ai-extraction" });
+        toast.success(t('document.extractSuccess', { count: filledFields.length }), { id: "ai-extraction" });
         
         // Show warning if critical fields weren't extracted
         const missingCriticalFields = [];
@@ -511,18 +515,18 @@ const Dashboard = () => {
         if (!filledFields.includes('price')) missingCriticalFields.push('Price');
         
         if (missingCriticalFields.length > 0) {
-          toast(`Some critical fields couldn't be extracted: ${missingCriticalFields.join(', ')}. Please fill them manually.`, { 
+          toast(t('document.missingFields', { fields: missingCriticalFields.join(', ') }), { 
             duration: 5000,
             icon: '⚠️'
           });
         }
       } else {
-        toast.error("No fields could be extracted from the document. Please fill in fields manually.", { id: "ai-extraction" });
+        toast.error(t('document.noFieldsExtracted'), { id: "ai-extraction" });
       }
       
     } catch (error) {
       console.error('Error in document upload:', error);
-      toast.error("Error processing document. Please check console for details.", { id: "ai-extraction" });
+      toast.error(t('document.extractFailed'), { id: "ai-extraction" });
     }
   };
 
@@ -545,7 +549,7 @@ const Dashboard = () => {
     
     // Ensure user is logged in
     if (!session?.user?.id) {
-      setError('You must be logged in to create a project');
+      setError(t('error.loginRequired'));
       return;
     }
     
@@ -556,13 +560,13 @@ const Dashboard = () => {
       
       // Validate required fields
       if (!placeholders.title) {
-        setError('Property title is required');
+        setError(t('error.titleRequired'));
         setUploadStage('idle');
         return;
       }
       
       if (!selectedTemplate) {
-        setError('Please select a template');
+        setError(t('error.selectTemplate'));
         setUploadStage('idle');
         return;
       }
@@ -889,6 +893,8 @@ const Dashboard = () => {
             uploadedImages={uploadedImages}
             logoUrl={logoUrl}
             selectedTemplate={selectedTemplate || undefined}
+            handleInputChange={handleInputChange}
+            autoFilledFields={autoFilledFields}
           />
         );
       default:
@@ -937,7 +943,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center">
           <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-800">Loading your dashboard...</p>
+          <p className="text-gray-800">{t('dashboard.loading')}</p>
         </div>
       </div>
     );
@@ -949,7 +955,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center">
           <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-800">Setting up your account...</p>
+          <p className="text-gray-800">{t('dashboard.settingUp')}</p>
         </div>
       </div>
     );
@@ -967,8 +973,8 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-wrap justify-between items-center mb-8">
           <div className="mr-auto">
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-2">Create and manage your real estate brochures</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('dashboard.title')}</h1>
+            <p className="text-gray-600 mt-2">{t('dashboard.subtitle')}</p>
           </div>
           
           <div className="flex items-center space-x-3 mt-4 sm:mt-0">
@@ -977,7 +983,7 @@ const Dashboard = () => {
               <svg className="w-4 h-4 mr-1.5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="font-medium text-gray-900 text-sm sm:text-base whitespace-nowrap">{credits ?? 0} Credits</span>
+              <span className="font-medium text-gray-900 text-sm sm:text-base whitespace-nowrap">{credits ?? 0} {t('dashboard.credits')}</span>
             </div>
             
             {/* Buy Credits Button */}
@@ -988,7 +994,7 @@ const Dashboard = () => {
               <svg className="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <span className="whitespace-nowrap">Buy Credits</span>
+              <span className="whitespace-nowrap">{t('dashboard.buyCredits')}</span>
             </button>
           </div>
         </div>
@@ -1002,7 +1008,7 @@ const Dashboard = () => {
                 <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900">Create New Brochure</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">{t('dashboard.createBrochure')}</h2>
           </div>
           
           {/* Form Steps Progress */}
@@ -1064,7 +1070,7 @@ const Dashboard = () => {
                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                Previous
+                {t('form.previous')}
               </button>
               
               {currentStep < FORM_STEPS.length - 1 ? (
@@ -1075,7 +1081,7 @@ const Dashboard = () => {
                 >
                   <span className="absolute right-0 -mt-12 h-32 w-8 translate-x-12 rotate-12 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40"></span>
                   <span className="relative flex items-center text-white font-medium">
-                    Next
+                    {t('form.next')}
                     <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -1095,11 +1101,11 @@ const Dashboard = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Creating...
+                        {t('form.creating')}
                       </>
                     ) : (
                       <>
-                        Create Brochure
+                        {t('form.createBrochure')}
                         <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -1111,56 +1117,6 @@ const Dashboard = () => {
             </div>
           </form>
         </div>
-        
-        {/* Link to Brochures Page */}
-        {/* <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8 mb-12">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center mr-4">
-                <svg className="w-5 h-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900">View Your Brochures</h2>
-                <p className="text-gray-600 mt-1">Access and manage all your existing brochures</p>
-              </div>
-            </div>
-            
-            <Link
-              href="/brochures"
-              className="group relative inline-flex items-center overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-3 transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg focus:outline-none"
-            >
-              <span className="absolute right-0 -mt-12 h-32 w-8 translate-x-12 rotate-12 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40"></span>
-              <span className="relative flex items-center text-white font-medium">
-                View All Brochures
-                <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </span>
-            </Link>
-          </div>
-          
-          <div className="mt-6 bg-gray-50 rounded-lg p-6 flex items-center justify-between">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-gray-800 font-medium">Your brochures have moved!</p>
-                <p className="text-gray-600 mt-1">We've created a dedicated page for all your brochures to make them easier to manage.</p>
-              </div>
-            </div>
-            
-            <div className="ml-4 flex-shrink-0">
-              <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                New
-              </span>
-            </div>
-          </div>
-        </div> */}
       </div>
     </div>
   );

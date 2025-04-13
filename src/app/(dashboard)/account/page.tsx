@@ -7,6 +7,8 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { toast } from 'react-hot-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import ImageUploader from '@/components/ImageUploader';
+import { useTranslation } from 'react-i18next';
+import i18n, { forceReloadTranslations } from '@/app/i18n';
 
 interface AccountFormData {
   logo_url: string;
@@ -53,6 +55,20 @@ export default function AccountPage() {
     email_address: false,
     website_name: false
   });
+  const { t } = useTranslation();
+  const [i18nInitialized, setI18nInitialized] = useState(false);
+
+  // Force reload translations when component mounts
+  useEffect(() => {
+    const loadTranslations = async () => {
+      if (i18n.language) {
+        await forceReloadTranslations(i18n.language);
+        setI18nInitialized(true);
+      }
+    };
+    
+    loadTranslations();
+  }, []);
 
   // Protect the account page route
   useEffect(() => {
@@ -175,7 +191,7 @@ export default function AccountPage() {
     
     // Check if any errors exist
     if (Object.values(errors).some(error => error)) {
-      toast.error("Please fill in all required fields correctly");
+      toast.error(t("account.fillAllFields"));
       return;
     }
     
@@ -187,7 +203,7 @@ export default function AccountPage() {
     
     // Show loading state
     setIsSubmitting(true);
-    toast.loading("Saving your information...", { id: "account-update" });
+    toast.loading(t("account.savingInfo"), { id: "account-update" });
     
     try {
       // Save the profile data with all fields
@@ -208,14 +224,14 @@ export default function AccountPage() {
         });
       
       if (error) {
-        toast.error("Failed to save your information", { id: "account-update" });
+        toast.error(t("account.saveFailed"), { id: "account-update" });
         console.error("Profile update error:", error);
         return;
       }
       
       toast.success(isExistingUser 
-        ? "Profile updated successfully" 
-        : "Profile completed successfully! Redirecting to dashboard...", 
+        ? t("account.profileUpdated") 
+        : t("account.profileCompleted"), 
         { id: "account-update" }
       );
       
@@ -228,7 +244,7 @@ export default function AccountPage() {
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("An unexpected error occurred", { id: "account-update" });
+      toast.error(t("account.unexpectedError"), { id: "account-update" });
     } finally {
       setIsSubmitting(false);
     }
@@ -269,12 +285,12 @@ export default function AccountPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {isExistingUser ? "Account Settings" : "Complete Your Profile"}
+              {isExistingUser ? t("account.settings") : t("account.completeProfile")}
             </h1>
             <p className="text-gray-600 mt-1">
               {isExistingUser 
-                ? "Manage your profile information" 
-                : "Before you can create brochures, we need some basic information about you"}
+                ? t("account.manageProfile") 
+                : t("account.beforeCreate")}
             </p>
           </div>
           
@@ -286,7 +302,7 @@ export default function AccountPage() {
               <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Back to Dashboard
+              {t("account.backToDashboard")}
             </button>
           )}
         </div>
@@ -295,8 +311,8 @@ export default function AccountPage() {
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Section Header */}
             <div className="border-b border-gray-200 pb-5">
-              <h2 className="text-2xl font-semibold text-gray-900">Broker Profile Information</h2>
-              <p className="mt-1 text-sm text-gray-500">This information will be used in your real estate brochures and templates.</p>
+              <h2 className="text-2xl font-semibold text-gray-900">{t("account.brokerProfileInfo")}</h2>
+              <p className="mt-1 text-sm text-gray-500">{t("account.infoForBrochures")}</p>
             </div>
             
             {/* Upload Section */}
@@ -304,7 +320,7 @@ export default function AccountPage() {
               {/* Logo Upload */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  Company Logo <span className="text-red-500">*</span>
+                  {t("account.companyLogo")} <span className="text-red-500">*</span>
                 </label>
                 <div className={`border-2 ${formErrors.logo_url ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-gray-50'} rounded-lg p-4`}>
                   {formData.logo_url ? (
@@ -315,7 +331,7 @@ export default function AccountPage() {
                         onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
                         className="text-sm text-red-600 hover:text-red-800"
                       >
-                        Remove
+                        {t("account.remove")}
                       </button>
                     </div>
                   ) : (
@@ -331,7 +347,7 @@ export default function AccountPage() {
                     />
                   )}
                   {formErrors.logo_url && (
-                    <p className="mt-2 text-sm text-red-600">Business logo is required</p>
+                    <p className="mt-2 text-sm text-red-600">{t("account.logoRequired")}</p>
                   )}
                 </div>
               </div>
@@ -339,7 +355,7 @@ export default function AccountPage() {
               {/* Broker Photo Upload */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  Broker Photo <span className="text-red-500">*</span>
+                  {t("account.brokerPhoto")} <span className="text-red-500">*</span>
                 </label>
                 <div className={`border-2 ${formErrors.broker_photo_url ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-gray-50'} rounded-lg p-4`}>
                   {formData.broker_photo_url ? (
@@ -350,7 +366,7 @@ export default function AccountPage() {
                         onClick={() => setFormData(prev => ({ ...prev, broker_photo_url: '' }))}
                         className="text-sm text-red-600 hover:text-red-800"
                       >
-                        Remove
+                        {t("account.remove")}
                       </button>
                     </div>
                   ) : (
@@ -366,7 +382,7 @@ export default function AccountPage() {
                     />
                   )}
                   {formErrors.broker_photo_url && (
-                    <p className="mt-2 text-sm text-red-600">Broker photo is required</p>
+                    <p className="mt-2 text-sm text-red-600">{t("account.photoRequired")}</p>
                   )}
                 </div>
               </div>
@@ -374,13 +390,13 @@ export default function AccountPage() {
             
             {/* Contact Information */}
             <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900">Contact Information</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t("account.contactInfo")}</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Broker Name */}
                 <div>
                   <label htmlFor="broker_name" className="block text-sm font-medium text-gray-700">
-                    Broker Name <span className="text-red-500">*</span>
+                    {t("account.brokerName")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -389,7 +405,7 @@ export default function AccountPage() {
                     value={formData.broker_name}
                     onChange={handleInputChange}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="John Smith"
+                    placeholder={t("account.brokerNamePlaceholder")}
                     required
                   />
                 </div>
@@ -397,7 +413,7 @@ export default function AccountPage() {
                 {/* Company Name */}
                 <div>
                   <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">
-                    Company Name <span className="text-red-500">*</span>
+                    {t("account.companyName")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -406,7 +422,7 @@ export default function AccountPage() {
                     value={formData.company_name}
                     onChange={handleInputChange}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="Real Estate Company LLC"
+                    placeholder={t("account.companyNamePlaceholder")}
                     required
                   />
                 </div>
@@ -414,7 +430,7 @@ export default function AccountPage() {
                 {/* Email Address */}
                 <div>
                   <label htmlFor="email_address" className="block text-sm font-medium text-gray-700">
-                    Email Address <span className="text-red-500">*</span>
+                    {t("account.emailAddress")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -423,18 +439,18 @@ export default function AccountPage() {
                     value={formData.email_address}
                     onChange={handleInputChange}
                     className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formErrors.email_address ? 'border-red-300' : ''}`}
-                    placeholder="john@realestate.com"
+                    placeholder={t("account.emailPlaceholder")}
                     required
                   />
                   {formErrors.email_address && (
-                    <p className="mt-1 text-sm text-red-600">Valid email address is required</p>
+                    <p className="mt-1 text-sm text-red-600">{t("account.validEmailRequired")}</p>
                   )}
                 </div>
                 
                 {/* Phone Number */}
                 <div>
                   <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700">
-                    Phone Number <span className="text-red-500">*</span>
+                    {t("account.phoneNumber")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -443,18 +459,18 @@ export default function AccountPage() {
                     value={formData.phone_number}
                     onChange={handleInputChange}
                     className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formErrors.phone_number ? 'border-red-300' : ''}`}
-                    placeholder="+1 (123) 456-7890"
+                    placeholder={t("account.phonePlaceholder")}
                     required
                   />
                   {formErrors.phone_number && (
-                    <p className="mt-1 text-sm text-red-600">Phone number is required</p>
+                    <p className="mt-1 text-sm text-red-600">{t("account.phoneRequired")}</p>
                   )}
                 </div>
                 
                 {/* Fax Number (Optional) */}
                 <div>
                   <label htmlFor="fax_number" className="block text-sm font-medium text-gray-700">
-                    Fax Number <span className="text-xs text-gray-500 font-normal">(optional)</span>
+                    {t("account.faxNumber")} <span className="text-xs text-gray-500 font-normal">({t("account.optional")})</span>
                   </label>
                   <input
                     type="text"
@@ -463,14 +479,14 @@ export default function AccountPage() {
                     value={formData.fax_number}
                     onChange={handleInputChange}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="+1 (123) 456-7891"
+                    placeholder={t("account.faxPlaceholder")}
                   />
                 </div>
                 
                 {/* Website */}
                 <div>
                   <label htmlFor="website_name" className="block text-sm font-medium text-gray-700">
-                    Website <span className="text-red-500">*</span>
+                    {t("account.website")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -479,12 +495,12 @@ export default function AccountPage() {
                     value={formData.website_name}
                     onChange={handleInputChange}
                     className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${formErrors.website_name ? 'border-red-300' : ''}`}
-                    placeholder="www.yourcompany.com"
+                    placeholder={t("account.websitePlaceholder")}
                     required
                   />
-                  <p className="mt-1 text-xs text-gray-500">Enter your website address (https:// will be added automatically if needed)</p>
+                  <p className="mt-1 text-xs text-gray-500">{t("account.websiteNote")}</p>
                   {formErrors.website_name && (
-                    <p className="mt-1 text-sm text-red-600">Website is required</p>
+                    <p className="mt-1 text-sm text-red-600">{t("account.websiteRequired")}</p>
                   )}
                 </div>
               </div>
@@ -492,7 +508,7 @@ export default function AccountPage() {
               {/* Address */}
               <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                  Address <span className="text-red-500">*</span>
+                  {t("account.address")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -501,10 +517,10 @@ export default function AccountPage() {
                   value={formData.address}
                   onChange={handleInputChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="123 Main Street, Apt 4B, New York, NY 10001"
+                  placeholder={t("account.addressPlaceholder")}
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">Enter complete address: street name, house number, ZIP code, and city</p>
+                <p className="mt-1 text-xs text-gray-500">{t("account.addressNote")}</p>
               </div>
             </div>
             
@@ -514,7 +530,7 @@ export default function AccountPage() {
                 type="submit"
                 className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Save Profile Information
+                {t("account.saveProfileInfo")}
               </button>
             </div>
           </form>

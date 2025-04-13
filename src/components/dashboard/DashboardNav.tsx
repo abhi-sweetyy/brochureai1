@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useTranslation } from "react-i18next";
+import { useEffect, useState } from "react";
+import i18n, { forceReloadTranslations } from "@/app/i18n";
 
 interface DashboardNavProps {
   activeTab: string;
@@ -15,6 +18,20 @@ interface DashboardNavProps {
 const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollapse }: DashboardNavProps) => {
   const router = useRouter();
   const supabase = createClientComponentClient();
+  const { t } = useTranslation();
+  const [i18nInitialized, setI18nInitialized] = useState(false);
+
+  // Force reload translations when component mounts
+  useEffect(() => {
+    const loadTranslations = async () => {
+      if (i18n.language) {
+        await forceReloadTranslations(i18n.language);
+        setI18nInitialized(true);
+      }
+    };
+    
+    loadTranslations();
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -51,7 +68,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
 
           {!isCollapsed && (
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
-              Menu
+              {t('dashboard.menu')}
             </h3>
           )}
           
@@ -66,7 +83,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                 }
               `}
               onClick={() => setIsOpen(false)}
-              title={isCollapsed ? "Dashboard" : ""}
+              title={isCollapsed ? t('dashboard.title') : ""}
             >
               <svg
                 className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'}`}
@@ -81,7 +98,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                   d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h2a1 1 0 001-1v-6.5l-3-3"
                 />
               </svg>
-              {!isCollapsed && "Dashboard"}
+              {!isCollapsed && t('dashboard.title')}
             </Link>
 
             <Link
@@ -94,7 +111,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                 }
               `}
               onClick={() => setIsOpen(false)}
-              title={isCollapsed ? "My Brochures" : ""}
+              title={isCollapsed ? t('dashboard.myBrochures') : ""}
             >
               <svg
                 className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'}`}
@@ -109,7 +126,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              {!isCollapsed && "My Brochures"}
+              {!isCollapsed && t('dashboard.myBrochures')}
             </Link>
 
             <Link
@@ -122,7 +139,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                 }
               `}
               onClick={() => setIsOpen(false)}
-              title={isCollapsed ? "Account Settings" : ""}
+              title={isCollapsed ? t('dashboard.accountSettings') : ""}
             >
               <svg
                 className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'}`}
@@ -137,7 +154,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                 />
               </svg>
-              {!isCollapsed && "Account Settings"}
+              {!isCollapsed && t('dashboard.accountSettings')}
             </Link>
 
             <Link
@@ -150,7 +167,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                 }
               `}
               onClick={() => setIsOpen(false)}
-              title={isCollapsed ? "Billing" : ""}
+              title={isCollapsed ? t('dashboard.billing') : ""}
             >
               <svg
                 className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'}`}
@@ -165,7 +182,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                   d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                 />
               </svg>
-              {!isCollapsed && "Billing"}
+              {!isCollapsed && t('dashboard.billing')}
             </Link>
           </nav>
           
@@ -179,7 +196,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
               ${isCollapsed ? 'justify-center w-10 h-10 p-0' : 'px-3 py-2 mt-auto'}
               text-red-600 hover:bg-red-50
             `}
-            title={isCollapsed ? "Sign Out" : ""}
+            title={isCollapsed ? t('dashboard.signOut') : ""}
           >
             <svg
               className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'}`}
@@ -194,7 +211,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
               />
             </svg>
-            {!isCollapsed && "Sign Out"}
+            {!isCollapsed && t('dashboard.signOut')}
           </button>
         </div>
       </div>

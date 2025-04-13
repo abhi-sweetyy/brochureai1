@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import SupabaseProvider from "@/providers/SupabaseProvider";
 import UserProvider from "@/providers/UserProvider";
+import { Providers } from "./providers";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -25,7 +26,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 				<link rel="apple-touch-icon" href="/favicon.png" />
 				<style>{`
 					html, body {
-						overflow-x: hidden !important;
+						overflow-x-hidden !important;
 						max-width: 100vw;
 						width: 100%;
 						margin: 0;
@@ -45,7 +46,9 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 				>
 					<SupabaseProvider>
 						<UserProvider>
-							<div className="w-full overflow-x-hidden">{children}</div>
+							<Providers>
+								<div className="w-full overflow-x-hidden">{children}</div>
+							</Providers>
 						</UserProvider>
 					</SupabaseProvider>
 				</ThemeProvider>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Konva from 'konva';
 
@@ -43,6 +44,7 @@ export default function ImageUploader({
   limit = 10,
   onClick
 }: ImageUploaderProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropAreaRef = useRef<HTMLDivElement>(null);
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
@@ -1001,7 +1003,7 @@ export default function ImageUploader({
           
           {/* Editor title */}
           <div className="text-white font-semibold p-4 border-b border-gray-800 bg-[#171e2e]">
-            Edit Before Upload
+            {t('imageUploader.editBeforeUpload')}
           </div>
           
           {/* Editor grid - Changes to column on mobile */}
@@ -1074,7 +1076,7 @@ export default function ImageUploader({
                         fontWeight: 'bold',
                         fontSize: '18px'
                       }}>
-                        Enhancing image...
+                        {t('imageUploader.enhancing')}
                       </div>
                     </div>
                   </div>
@@ -1118,7 +1120,7 @@ export default function ImageUploader({
                         fontWeight: 'bold',
                         fontSize: '18px'
                       }}>
-                        Saving image...
+                        {t('imageUploader.saving')}
                       </div>
                     </div>
                   </div>
@@ -1140,12 +1142,12 @@ export default function ImageUploader({
               }}
             >
               <div className="bg-[#222A38] rounded-lg p-3 mb-3">
-                <h3 className="text-base font-medium text-white mb-3">Adjustments</h3>
+                <h3 className="text-base font-medium text-white mb-3">{t('imageUploader.adjustments')}</h3>
                 
                 {/* Add brightness and contrast sliders back */}
                 <div className="mb-3">
                   <div className="flex justify-between">
-                    <label className="text-xs text-gray-400 block mb-1">Brightness</label>
+                    <label className="text-xs text-gray-400 block mb-1">{t('imageUploader.brightness')}</label>
                     <span className="text-xs text-gray-500">{editorState.brightness}</span>
                   </div>
                   <input
@@ -1183,7 +1185,7 @@ export default function ImageUploader({
                 </div>
                 <div className="mb-4">
                   <div className="flex justify-between">
-                    <label className="text-xs text-gray-400 block mb-1">Contrast</label>
+                    <label className="text-xs text-gray-400 block mb-1">{t('imageUploader.contrast')}</label>
                     <span className="text-xs text-gray-500">{editorState.contrast}</span>
                   </div>
                   <input
@@ -1227,10 +1229,10 @@ export default function ImageUploader({
                     onClick={enhanceImage}
                     className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium px-4 py-2 rounded-md hover:from-blue-600 hover:to-purple-700 transition-all"
                   >
-                    Enhance Image
+                    {t('imageUploader.enhanceImage')}
                   </button>
                   <p className="text-xs text-gray-400 mt-2 text-center">
-                    Increase Lighting in image. Click reset if needed
+                    {t('imageUploader.enhanceTip')}
                   </p>
                 </div>
               </div>
@@ -1238,7 +1240,7 @@ export default function ImageUploader({
               {/* Blur controls */}
               <div className="bg-[#222A38] rounded-lg p-3 mb-3">
                 <div className="flex items-center mb-3">
-                  <label className="text-sm font-medium text-gray-300">Blur Areas</label>
+                  <label className="text-sm font-medium text-gray-300">{t('imageUploader.blurAreas')}</label>
                   <div className="flex-1"></div>
                   <button 
                     type="button"
@@ -1254,13 +1256,13 @@ export default function ImageUploader({
                       });
                     }}
                   >
-                    {editorState.isDrawingBlur ? 'Drawing Mode' : 'Select Mode'}
+                    {editorState.isDrawingBlur ? t('imageUploader.drawingMode') : t('imageUploader.selectMode')}
                   </button>
                 </div>
                 
                 <div className="mb-3">
                   <div className="flex justify-between">
-                    <label className="text-xs text-gray-400 block mb-1">Blur Strength</label>
+                    <label className="text-xs text-gray-400 block mb-1">{t('imageUploader.blurStrength')}</label>
                     <span className="text-xs text-gray-500">{editorState.blurBrushStrength}</span>
                   </div>
                   <input
@@ -1293,8 +1295,8 @@ export default function ImageUploader({
                 </div>
                 
                 <div className="text-xs text-gray-500 italic mt-1 mb-3">
-                  <p>Click and drag to draw blur regions</p>
-                  <p>Double-click a region to remove it</p>
+                  <p>{t('imageUploader.blurInstructions1')}</p>
+                  <p>{t('imageUploader.blurInstructions2')}</p>
                 </div>
                 
                 {editorState.blurRectangles.length > 0 && (
@@ -1314,7 +1316,7 @@ export default function ImageUploader({
                     }}
                     className="w-full text-xs bg-red-800 hover:bg-red-700 text-white px-3 py-2 rounded-md"
                   >
-                    Clear All Blur Regions
+                    {t('imageUploader.clearBlur')}
                   </button>
                 )}
               </div>
@@ -1330,10 +1332,10 @@ export default function ImageUploader({
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Saving image...
+                      {t('imageUploader.saving')}
                     </>
                   ) : (
-                    'Save Changes'
+                    t('imageUploader.saveChanges')
                   )}
                 </button>
                 <button
@@ -1366,7 +1368,7 @@ export default function ImageUploader({
                   disabled={isSaving}
                   className="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-md transition-colors disabled:opacity-50"
                 >
-                  Reset
+                  {t('imageUploader.reset')}
                 </button>
               </div>
             </div>
@@ -1614,14 +1616,14 @@ export default function ImageUploader({
                     onClick={(e) => handleEditClick(index, e)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm"
                   >
-                    Edit
+                    {t('imageUploader.edit')}
                   </button>
                   <button
                     type="button"
                     onClick={(e) => handleRemoveImage(index, e)}
                     className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
                   >
-                    Remove
+                    {t('imageUploader.remove')}
                   </button>
                 </div>
               </div>
@@ -1650,10 +1652,10 @@ export default function ImageUploader({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
                 </svg>
                 <p className="text-sm font-medium text-gray-300">
-                  {isUploading ? 'Uploading...' : 'Add Image'}
+                  {isUploading ? t('imageUploader.uploading') : t('imageUploader.addImage')}
                 </p>
                 <p className="text-xs text-gray-500 mt-1 text-center">
-                  Drop file here or click to browse
+                  {t('imageUploader.dropHere')}
                 </p>
               </div>
             </div>
@@ -1681,13 +1683,13 @@ export default function ImageUploader({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <p className="text-lg font-medium text-gray-300 mb-2">
-              {isUploading ? 'Uploading...' : 'Upload Property Images'}
+              {isUploading ? t('imageUploader.uploading') : t('imageUploader.uploadImages')}
             </p>
             <p className="text-sm text-gray-500 text-center max-w-xs">
-              Drag and drop your images here, or click to browse your files
+              {t('imageUploader.dragAndDrop')}
             </p>
             <p className="text-xs text-gray-600 mt-4">
-              Supported formats: JPG, PNG, WEBP • Max size: 5MB
+              {t('imageUploader.supportedFormats')}
             </p>
           </div>
         </div>

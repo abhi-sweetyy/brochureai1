@@ -4,6 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import mammoth from 'mammoth';
 import { toast } from 'react-hot-toast';
 import { PropertyPlaceholders } from '@/types/placeholders';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/app/i18n';
+import { useLanguage } from '@/app/contexts/LanguageContext';
 
 interface BasicInfoStepProps {
   placeholders: PropertyPlaceholders;
@@ -18,15 +21,34 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
   handleDocumentUpload,
   autoFilledFields
 }) => {
+  const { t, i18n: translationInstance } = useTranslation();
+  const { currentLanguage } = useLanguage();
   const [docText, setDocText] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [, forceUpdate] = useState({});
+
+  // Force component to re-render when language changes
+  useEffect(() => {
+    console.log("Language in BasicInfoStep changed to:", currentLanguage);
+    console.log("BasicInfoStep i18n instance language:", translationInstance.language);
+    console.log("Global i18n instance language:", i18n.language);
+    // Force component re-render to ensure translations are updated
+    forceUpdate({});
+  }, [currentLanguage, translationInstance.language]);
 
   useEffect(() => {
     console.log("BasicInfoStep rendered with placeholders:", placeholders);
     console.log("Auto-filled fields:", autoFilledFields);
-  }, [placeholders, autoFilledFields]);
+    
+    // Check if any key is showing the actual key instead of translation
+    const documentTitle = t('basicInfo.documentTitle');
+    console.log("Translation test - documentTitle:", documentTitle);
+    if (documentTitle === 'basicInfo.documentTitle') {
+      console.warn("Translation not working correctly - showing key instead of value");
+    }
+  }, [placeholders, autoFilledFields, t]);
 
   const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDocText(e.target.value);
@@ -49,7 +71,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
         const text = await file.text();
         setDocText(text);
       } else {
-        setUploadError('Please upload a .docx, .txt, or .rtf file');
+        setUploadError(t('basicInfo.fileTypeError'));
         setIsProcessing(false);
         return;
       }
@@ -57,14 +79,14 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
       setIsProcessing(false);
     } catch (error) {
       console.error('Error processing file:', error);
-      setUploadError('Failed to process the document');
+      setUploadError(t('basicInfo.processError'));
       setIsProcessing(false);
     }
   };
 
   const processDocument = async () => {
     if (!docText.trim()) {
-      setUploadError('Please upload a document or paste property details');
+      setUploadError(t('basicInfo.emptyDocError'));
       return;
     }
 
@@ -79,7 +101,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
         console.log("Document processed successfully");
       } catch (error) {
         console.error('Error processing document:', error);
-        setUploadError('Failed to process property details. Please try again or fill in the fields manually.');
+        setUploadError(t('basicInfo.aiProcessError'));
       }
     } finally {
       setIsProcessing(false);
@@ -88,20 +110,20 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
 
   const regenerateCriticalFields = async () => {
     if (!docText.trim()) {
-      setUploadError('No document text available for regeneration');
+      setUploadError(t('basicInfo.noTextForRegeneration'));
       return;
     }
 
     try {
       setIsProcessing(true);
-      toast.loading("Regenerating critical fields...", { id: "regenerate" });
+      toast.loading(t('basicInfo.regeneratingFields'), { id: "regenerate" });
       
       // Get the API key from environment variables
       const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
       
       if (!apiKey) {
-        toast.error("API key not configured", { id: "regenerate" });
-        setUploadError("API key not configured. Please check your environment variables.");
+        toast.error(t('api.keyMissing'), { id: "regenerate" });
+        setUploadError(t('api.keyMissing'));
         setIsProcessing(false);
         return;
       }
@@ -139,8 +161,8 @@ Output ONLY a JSON object with these three fields exactly. If information is not
       
       if (!response.ok) {
         console.error(`API request failed with status ${response.status}`);
-        toast.error(`API request failed with status ${response.status}`, { id: "regenerate" });
-        setUploadError(`API request failed with status ${response.status}`);
+        toast.error(`${t('api.requestFailed')} ${response.status}`, { id: "regenerate" });
+        setUploadError(`${t('api.requestFailed')} ${response.status}`);
         setIsProcessing(false);
         return;
       }
@@ -149,8 +171,8 @@ Output ONLY a JSON object with these three fields exactly. If information is not
       
       if (!data?.choices?.[0]?.message?.content) {
         console.error("Invalid response format from AI service");
-        toast.error("Invalid response from AI service", { id: "regenerate" });
-        setUploadError("Invalid response from AI service");
+        toast.error(t('api.invalidResponse'), { id: "regenerate" });
+        setUploadError(t('api.invalidResponse'));
         setIsProcessing(false);
         return;
       }
@@ -168,8 +190,8 @@ Output ONLY a JSON object with these three fields exactly. If information is not
         console.log("Regenerated fields:", extractedContent);
       } catch (parseError) {
         console.error("Error parsing response:", parseError);
-        toast.error("Failed to parse AI response", { id: "regenerate" });
-        setUploadError("Failed to parse AI response");
+        toast.error(t('api.parseError'), { id: "regenerate" });
+        setUploadError(t('api.parseError'));
         setIsProcessing(false);
         return;
       }
@@ -211,16 +233,16 @@ Output ONLY a JSON object with these three fields exactly. If information is not
       }
       
       if (updatedCount > 0) {
-        toast.success(`${updatedCount} critical field${updatedCount > 1 ? 's' : ''} regenerated`, { id: "regenerate" });
+        toast.success(t('basicInfo.fieldsRegenerated', { count: updatedCount }), { id: "regenerate" });
       } else {
-        toast.error("Could not extract any critical fields", { id: "regenerate" });
-        setUploadError("Could not extract any critical fields from the document");
+        toast.error(t('basicInfo.noFieldsExtracted'), { id: "regenerate" });
+        setUploadError(t('basicInfo.noFieldsExtracted'));
       }
       
     } catch (error) {
       console.error("Error regenerating fields:", error);
-      toast.error("Failed to regenerate fields", { id: "regenerate" });
-      setUploadError("Failed to regenerate fields. Please try again or fill in fields manually.");
+      toast.error(t('basicInfo.regenerationError'), { id: "regenerate" });
+      setUploadError(t('basicInfo.regenerationError'));
     } finally {
       setIsProcessing(false);
     }
@@ -229,8 +251,8 @@ Output ONLY a JSON object with these three fields exactly. If information is not
   return (
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
-        <h3 className="text-gray-800 text-lg font-medium mb-4">Property Details from Document</h3>
-        <p className="text-gray-600 mb-4">Upload a document or paste property details below:</p>
+        <h3 className="text-gray-800 text-lg font-medium mb-4">{t('basicInfo.documentTitle')}</h3>
+        <p className="text-gray-600 mb-4">{t('basicInfo.uploadInstructions')}</p>
         
         <div className="mb-4">
           <div className="flex items-center justify-center w-full">
@@ -241,8 +263,8 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                 <svg className="w-8 h-8 mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                 </svg>
-                <p className="mb-2 text-sm text-gray-600"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                <p className="text-xs text-gray-500">DOCX, TXT, or RTF (MAX. 10MB)</p>
+                <p className="mb-2 text-sm text-gray-600"><span className="font-semibold">{t('basicInfo.clickToUpload')}</span> {t('basicInfo.dragDrop')}</p>
+                <p className="text-xs text-gray-500">{t('basicInfo.supportedFormats')}</p>
               </div>
               <input 
                 ref={fileInputRef}
@@ -256,13 +278,13 @@ Output ONLY a JSON object with these three fields exactly. If information is not
         </div>
 
         <div className="mb-4">
-          <p className="text-gray-600 text-sm mb-2">Or paste property details below:</p>
+          <p className="text-gray-600 text-sm mb-2">{t('basicInfo.orPaste')}</p>
           <textarea
             value={docText}
             onChange={handleTextAreaChange}
             rows={10}
             className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Paste property description text here..."
+            placeholder={t('basicInfo.pasteHere')}
           ></textarea>
         </div>
         
@@ -289,7 +311,7 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Processing...
+              {t('basicInfo.processing')}
             </>
           ) : (
             <>
@@ -300,22 +322,22 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                 <line x1="16" y1="17" x2="8" y2="17"></line>
                 <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
-              Extract Information
+              {t('basicInfo.extractInfo')}
             </>
           )}
         </button>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h3 className="text-gray-800 text-lg font-medium mb-4">Required Information</h3>
-        <p className="text-gray-600 mb-4">Fill in or edit the property details below:</p>
+        <h3 className="text-gray-800 text-lg font-medium mb-4">{t('basicInfo.requiredInfo')}</h3>
+        <p className="text-gray-600 mb-4">{t('basicInfo.fillEdit')}</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Property Title*
+              {t('basicInfo.propertyTitle')}*
               {autoFilledFields.includes('title') && (
-                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t('basicInfo.aiFilled')}</span>
               )}
             </label>
             <input
@@ -328,16 +350,16 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                   ? 'bg-blue-50 border border-blue-300' 
                   : 'bg-white border border-gray-300'
               }`}
-              placeholder="Enter property title"
+              placeholder={t('basicInfo.enterTitle')}
               required
             />
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Address*
+              {t('basicInfo.address')}*
               {autoFilledFields.includes('address') && (
-                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t('basicInfo.aiFilled')}</span>
               )}
             </label>
             <input
@@ -350,16 +372,16 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                   ? 'bg-blue-50 border border-blue-300' 
                   : 'bg-white border border-gray-300'
               }`}
-              placeholder="Enter property address"
+              placeholder={t('basicInfo.enterAddress')}
               required
             />
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Short Description
+              {t('basicInfo.shortDescription')}
               {autoFilledFields.includes('shortdescription') && (
-                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t('basicInfo.aiFilled')}</span>
               )}
             </label>
             <textarea
@@ -371,16 +393,16 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                   ? 'bg-blue-50 border border-blue-300' 
                   : 'bg-white border border-gray-300'
               }`}
-              placeholder="Enter short property description"
+              placeholder={t('basicInfo.enterShortDescription')}
               rows={2}
             />
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Price*
+              {t('basicInfo.price')}*
               {autoFilledFields.includes('price') && (
-                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t('basicInfo.aiFilled')}</span>
               )}
             </label>
             <input
@@ -393,7 +415,7 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                   ? 'bg-blue-50 border border-blue-300' 
                   : 'bg-white border border-gray-300'
               }`}
-              placeholder="Enter property price"
+              placeholder={t('basicInfo.enterPrice')}
               required
             />
           </div>
@@ -401,9 +423,9 @@ Output ONLY a JSON object with these three fields exactly. If information is not
         
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-            Date Available
+            {t('basicInfo.dateAvailable')}
             {autoFilledFields.includes('date_available') && (
-              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
+              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t('basicInfo.aiFilled')}</span>
             )}
           </label>
           <input
@@ -416,16 +438,16 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                 ? 'bg-blue-50 border border-blue-300' 
                 : 'bg-white border border-gray-300'
             }`}
-            placeholder="When is the property available?"
+            placeholder={t('basicInfo.enterDateAvailable')}
           />
         </div>
         
         <div className="space-y-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Site Plan Description
+              {t('basicInfo.sitePlanDescription')}
               {autoFilledFields.includes('descriptionlarge') && (
-                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t('basicInfo.aiFilled')}</span>
               )}
             </label>
             <textarea
@@ -437,16 +459,16 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                   ? 'bg-blue-50 border border-blue-300' 
                   : 'bg-white border border-gray-300'
               }`}
-              placeholder="Enter information about the property's site plan and position"
+              placeholder={t('basicInfo.enterSitePlanDescription')}
               rows={4}
             />
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Detailed Property Description
+              {t('basicInfo.detailedDescription')}
               {autoFilledFields.includes('descriptionextralarge') && (
-                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">AI Filled</span>
+                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t('basicInfo.aiFilled')}</span>
               )}
             </label>
             <textarea
@@ -458,7 +480,7 @@ Output ONLY a JSON object with these three fields exactly. If information is not
                   ? 'bg-blue-50 border border-blue-300' 
                   : 'bg-white border border-gray-300'
               }`}
-              placeholder="Enter detailed property description"
+              placeholder={t('basicInfo.enterDetailedDescription')}
               rows={8}
               style={{ whiteSpace: 'pre-wrap' }}
             />
@@ -475,7 +497,7 @@ Output ONLY a JSON object with these three fields exactly. If information is not
             <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Regenerate Title, Address & Price
+            {t('basicInfo.regenerateCriticalFields')}
           </button>
         </div>
       </div>

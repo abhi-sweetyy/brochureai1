@@ -5,6 +5,7 @@ import { saveAs } from 'file-saver';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { toast } from 'react-hot-toast';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 interface DocumentViewerProps {
   placeholders: Record<string, string>;
@@ -25,6 +26,7 @@ export default function DocumentViewer({
   onPresentationGenerated,
   selectedPages
 }: DocumentViewerProps) {
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -36,6 +38,50 @@ export default function DocumentViewer({
   
   // Updated Google Slides presentation ID for the template
   const templateId = "163ORTnlGT7GSowNSbYzS6pbgANpsLfTrmuzTMPd-Now";
+
+  // Get current language for Google Slides
+  const getLanguageParam = () => {
+    // Map i18n language to Google Slides language code
+    const lang = i18n.language?.startsWith('de') ? 'de' : 'en';
+    return `hl=${lang}`;
+  };
+
+  // Create URL with language parameter
+  const createUrlWithLanguage = (baseUrl: string) => {
+    // Extract the base URL without parameters
+    const urlBase = baseUrl.split('?')[0];
+    
+    // Extract existing query parameters if any
+    const queryParams = baseUrl.includes('?') ? baseUrl.split('?')[1] : '';
+    const params = new URLSearchParams(queryParams);
+    
+    // Set the language parameter (overrides any existing hl parameter)
+    const lang = i18n.language?.startsWith('de') ? 'de' : 'en';
+    params.set('hl', lang);
+    
+    // Reconstruct the URL with all parameters
+    return `${urlBase}?${params.toString()}`;
+  };
+
+  // Update URLs whenever language changes
+  useEffect(() => {
+    if (processedDocumentId) {
+      const basePreviewUrl = `https://docs.google.com/presentation/d/${processedDocumentId}/preview`;
+      const baseEditUrl = `https://docs.google.com/presentation/d/${processedDocumentId}/edit?usp=embed&rm=demo`;
+      
+      // Log the URLs for debugging
+      const previewWithLang = createUrlWithLanguage(basePreviewUrl);
+      const editWithLang = createUrlWithLanguage(baseEditUrl);
+      console.log("Setting URLs with language:", { 
+        preview: previewWithLang, 
+        edit: editWithLang, 
+        lang: i18n.language 
+      });
+      
+      setPreviewUrl(previewWithLang);
+      setEditUrl(editWithLang);
+    }
+  }, [i18n.language, processedDocumentId]);
 
   // Check for existing presentation on mount
   useEffect(() => {
@@ -58,8 +104,12 @@ export default function DocumentViewer({
         if (project && project.presentation_id) {
           console.log('Found existing presentation:', project.presentation_id);
           setProcessedDocumentId(project.presentation_id);
-          setPreviewUrl(`https://docs.google.com/presentation/d/${project.presentation_id}/preview`);
-          setEditUrl(`https://docs.google.com/presentation/d/${project.presentation_id}/edit?usp=embed&rm=demo`);
+          
+          const basePreviewUrl = `https://docs.google.com/presentation/d/${project.presentation_id}/preview`;
+          const baseEditUrl = `https://docs.google.com/presentation/d/${project.presentation_id}/edit?usp=embed&rm=demo`;
+          
+          setPreviewUrl(createUrlWithLanguage(basePreviewUrl));
+          setEditUrl(createUrlWithLanguage(baseEditUrl));
         }
       } catch (error) {
         console.error('Error checking for existing presentation:', error);
@@ -173,16 +223,16 @@ export default function DocumentViewer({
         // Store the document ID for later use (e.g., downloading)
         setProcessedDocumentId(data.documentId);
         
-        // Update the preview URL to show the processed document
-        setPreviewUrl(`https://docs.google.com/presentation/d/${data.documentId}/preview`);
-        // Add edit URL for direct Google Slides editing with proper tools
-        setEditUrl(`https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`);
+        // Create URLs with language parameter
+        const basePreviewUrl = `https://docs.google.com/presentation/d/${data.documentId}/preview`;
+        const baseEditUrl = `https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`;
+        
+        setPreviewUrl(createUrlWithLanguage(basePreviewUrl));
+        setEditUrl(createUrlWithLanguage(baseEditUrl));
         
         // After successful presentation generation and database update
         if (data.documentId) {
           setProcessedDocumentId(data.documentId);
-          setPreviewUrl(`https://docs.google.com/presentation/d/${data.documentId}/preview`);
-          setEditUrl(`https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`);
           
           // Call the new callback to notify parent
           if (onPresentationGenerated) {
@@ -210,7 +260,7 @@ export default function DocumentViewer({
         
       } catch (error: any) {
         console.error(`Error processing presentation:`, error);
-        setError(error.message || `Failed to process presentation`);
+        setError(error.message || t('documentViewer.failedToProcessPresentation'));
       } finally {
         setLoading(false);
       }
@@ -222,7 +272,7 @@ export default function DocumentViewer({
   // Update the handleDocumentUpload function for the manual generation as well
   const processDocumentManually = async () => {
     if (!projectId || images.length === 0) {
-      setError('Please add at least one image before processing');
+      setError(t('documentViewer.addImagesBeforeProcessing'));
       return;
     }
     
@@ -315,9 +365,13 @@ export default function DocumentViewer({
       
       const data = await response.json();
       setProcessedDocumentId(data.documentId);
-      setPreviewUrl(`https://docs.google.com/presentation/d/${data.documentId}/preview`);
-      // Add edit URL for direct Google Slides editing with proper tools
-      setEditUrl(`https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`);
+      
+      // Create URLs with language parameter
+      const basePreviewUrl = `https://docs.google.com/presentation/d/${data.documentId}/preview`;
+      const baseEditUrl = `https://docs.google.com/presentation/d/${data.documentId}/edit?usp=embed&rm=demo`;
+      
+      setPreviewUrl(createUrlWithLanguage(basePreviewUrl));
+      setEditUrl(createUrlWithLanguage(baseEditUrl));
       
       // Update database
       const { error: updateError } = await supabase
@@ -335,7 +389,7 @@ export default function DocumentViewer({
       
     } catch (error: any) {
       console.error(`Error processing presentation:`, error);
-      setError(error.message || `Failed to process presentation`);
+      setError(error.message || t('documentViewer.failedToProcessPresentation'));
     } finally {
       setLoading(false);
     }
@@ -381,7 +435,7 @@ export default function DocumentViewer({
   // Download the document as PDF
   const downloadDocument = async () => {
     if (!processedDocumentId) {
-      setError('No processed document to download');
+      setError(t('documentViewer.noProcessedDocument'));
       return;
     }
     
@@ -403,7 +457,7 @@ export default function DocumentViewer({
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to download presentation as PDF`);
+        throw new Error(errorData.message || t('documentViewer.failedToDownloadPDF'));
       }
       
       // Get the blob from the response
@@ -428,7 +482,7 @@ export default function DocumentViewer({
       
     } catch (error: any) {
       console.error(`Error downloading presentation as PDF:`, error);
-      setError(error.message || `Failed to download presentation as PDF`);
+      setError(error.message || t('documentViewer.failedToDownloadPDF'));
     } finally {
       setLoading(false);
     }
@@ -473,7 +527,7 @@ export default function DocumentViewer({
       return newImageUrl;
     } catch (error) {
       console.error('Image upload failed:', error);
-      setError('Failed to upload image');
+      setError(t('documentViewer.failedToUploadImage'));
       throw error;
     }
   };
@@ -535,7 +589,7 @@ export default function DocumentViewer({
         });
       }
       
-      toast.success('Image replaced successfully');
+      toast.success(t('documentViewer.imageReplacedSuccessfully'));
       
       // Try to delete the old file if it exists
       if (oldImageUrl) {
@@ -558,7 +612,7 @@ export default function DocumentViewer({
       
     } catch (error: any) {
       console.error('Image replacement failed:', error);
-      toast.error(error.message || 'Failed to replace image');
+      toast.error(error.message || t('documentViewer.failedToReplaceImage'));
     } finally {
       setLoading(false);
     }
@@ -616,7 +670,7 @@ export default function DocumentViewer({
     return createPortal(
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
         <iframe 
-          src={editUrl}
+          src={createUrlWithLanguage(editUrl)}
           style={{
             position: 'absolute',
             top: 0,
@@ -625,7 +679,7 @@ export default function DocumentViewer({
             height: '100%',
             border: 'none'
           }}
-          title="Presentation Editor"
+          title={t('documentViewer.presentationEditor')}
           allowFullScreen
         />
         <button
@@ -647,7 +701,7 @@ export default function DocumentViewer({
             cursor: 'pointer',
             boxShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
           }}
-          title="Exit Full Screen"
+          title={t('documentViewer.exitFullScreen')}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 18L18 6M6 6l12 12" />
@@ -660,8 +714,20 @@ export default function DocumentViewer({
 
   // If in fullscreen mode, render a fixed position overlay
   if (isFullScreen && editUrl) {
-    // Add parameters to force a more embedded/fullscreen experience
-    const enhancedEditUrl = `${editUrl}&embedded=true&rm=embedded`;
+    // Parse the existing URL and ensure language parameter is properly set
+    const baseUrl = editUrl.split('?')[0];
+    const queryParams = editUrl.includes('?') ? editUrl.split('?')[1] : '';
+    const params = new URLSearchParams(queryParams);
+    
+    // Set the language parameter and add embedded mode parameters
+    const lang = i18n.language?.startsWith('de') ? 'de' : 'en';
+    params.set('hl', lang);
+    params.set('embedded', 'true');
+    params.set('rm', 'embedded');
+    
+    const enhancedEditUrl = `${baseUrl}?${params.toString()}`;
+    
+    console.log("Using enhanced fullscreen edit URL with language:", enhancedEditUrl);
     
     return (
       <div 
@@ -693,7 +759,7 @@ export default function DocumentViewer({
             right: 0,
             bottom: 0
           }}
-          title="Presentation Editor"
+          title={t('documentViewer.presentationEditor')}
           allowFullScreen
           id="fullscreen-iframe"
         />
@@ -717,7 +783,7 @@ export default function DocumentViewer({
             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.5)',
             fontSize: '24px'
           }}
-          title="Exit Full Screen"
+          title={t('documentViewer.exitFullScreen')}
           id="fullscreen-exit-button"
         >
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -732,7 +798,7 @@ export default function DocumentViewer({
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white text-gray-800">
         <h3 className="text-lg font-medium text-gray-800">
-          {isEditMode ? "Edit" : "Preview"}
+          {isEditMode ? t('documentViewer.edit') : t('documentViewer.preview')}
         </h3>
         <div className="flex space-x-2">
           {!previewUrl && (
@@ -747,10 +813,10 @@ export default function DocumentViewer({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating...
+                  {t('documentViewer.generating')}
                 </>
               ) : (
-                "Generate Brochure"
+                t('documentViewer.generateBrochure')
               )}
             </button>
           )}
@@ -761,7 +827,7 @@ export default function DocumentViewer({
                 disabled={loading}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
-                Download PDF
+                {t('documentViewer.downloadPDF')}
               </button>
               
               {editUrl && previewUrl && (
@@ -775,7 +841,7 @@ export default function DocumentViewer({
                           : 'text-gray-600 hover:text-gray-800'
                       } transition-colors`}
                     >
-                      Preview
+                      {t('documentViewer.preview')}
                     </button>
                     <button
                       onClick={() => setIsEditMode(true)}
@@ -785,14 +851,14 @@ export default function DocumentViewer({
                           : 'text-gray-600 hover:text-gray-800'
                       } transition-colors`}
                     >
-                      Edit
+                      {t('documentViewer.edit')}
                     </button>
                   </div>
                   {isEditMode && (
                     <button
                       onClick={toggleFullScreen}
                       className="text-green-600 hover:text-green-700 transition-colors"
-                      title="Edit in Fullscreen"
+                      title={t('documentViewer.editInFullscreen')}
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
@@ -810,14 +876,14 @@ export default function DocumentViewer({
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600 mb-4"></div>
-            <p className="text-gray-600 text-lg">Processing presentation...</p>
+            <p className="text-gray-600 text-lg">{t('documentViewer.processingPresentation')}</p>
           </div>
         ) : previewUrl ? (
           <>
             <iframe 
               src={isEditMode ? editUrl || '' : previewUrl}
               className="w-full h-full border-0 min-h-[600px]"
-              title={isEditMode ? "Presentation Editor" : "Presentation Preview"}
+              title={isEditMode ? t('documentViewer.presentationEditor') : t('documentViewer.presentationPreview')}
               allowFullScreen
             />
             {isEditMode && (
@@ -825,7 +891,7 @@ export default function DocumentViewer({
                 <button
                   onClick={toggleFullScreen}
                   className="bg-green-600 text-white p-3 rounded-full shadow-lg hover:bg-green-700 transition-colors"
-                  title="Edit in Fullscreen"
+                  title={t('documentViewer.editInFullscreen')}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
@@ -839,8 +905,8 @@ export default function DocumentViewer({
             <svg className="w-24 h-24 mb-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-gray-600 text-xl mb-3">No Brochure preview available.</p>
-            <p className="text-gray-500 text-base">Click "Generate Brochure" to create a presentation with your data.</p>
+            <p className="text-gray-600 text-xl mb-3">{t('documentViewer.noBrochurePreview')}</p>
+            <p className="text-gray-500 text-base">{t('documentViewer.clickGenerateBrochure')}</p>
             {error && (
               <div className="mt-6 p-4 bg-red-100 border border-red-300 rounded-md max-w-md">
                 <p className="text-red-600 text-sm">{error}</p>

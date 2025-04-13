@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { PropertyPlaceholders } from "@/types/placeholders";
 
 interface ContactInfoStepProps {
@@ -18,20 +19,22 @@ const ContactInfoStep: React.FC<ContactInfoStepProps> = ({
   handleInputChange,
   autoFilledFields,
 }) => {
+  const { t } = useTranslation();
+  
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-[#171717] text-lg font-medium mb-4">
-          Contact Information
+          {t('contactInfo.title')}
         </h3>
         <p className="text-gray-600 mb-4">
-          Enter contact information for the property:
+          {t('contactInfo.enterInfo')}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Phone Number
+              {t('contactInfo.phoneNumber')}
               {autoFilledFields.includes("phone_number") && (
                 <span className="ml-2 text-xs bg-[#5169FE]/10 text-[#5169FE] px-2 py-0.5 rounded">
                   AI Filled
@@ -48,13 +51,13 @@ const ContactInfoStep: React.FC<ContactInfoStepProps> = ({
                   ? "bg-[#5169FE]/5 border border-[#5169FE]/30"
                   : "bg-white border border-gray-300"
               } focus:ring-2 focus:ring-[#5169FE] focus:border-transparent`}
-              placeholder="Enter phone number"
+              placeholder={t('contactInfo.enterPhoneNumber')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Email Address
+              {t('contactInfo.emailAddress')}
               {autoFilledFields.includes("email_address") && (
                 <span className="ml-2 text-xs bg-[#5169FE]/10 text-[#5169FE] px-2 py-0.5 rounded">
                   AI Filled
@@ -71,13 +74,13 @@ const ContactInfoStep: React.FC<ContactInfoStepProps> = ({
                   ? "bg-[#5169FE]/5 border border-[#5169FE]/30"
                   : "bg-white border border-gray-300"
               } focus:ring-2 focus:ring-[#5169FE] focus:border-transparent`}
-              placeholder="Enter email address"
+              placeholder={t('contactInfo.enterEmailAddress')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Website Name
+              {t('contactInfo.websiteName')}
               {autoFilledFields.includes("website_name") && (
                 <span className="ml-2 text-xs bg-[#5169FE]/10 text-[#5169FE] px-2 py-0.5 rounded">
                   AI Filled
@@ -94,19 +97,19 @@ const ContactInfoStep: React.FC<ContactInfoStepProps> = ({
                   ? "bg-[#5169FE]/5 border border-[#5169FE]/30"
                   : "bg-white border border-gray-300"
               } focus:ring-2 focus:ring-[#5169FE] focus:border-transparent`}
-              placeholder="Enter website name"
+              placeholder={t('contactInfo.enterWebsiteName')}
             />
           </div>
         </div>
 
         <h4 className="text-[#171717] text-md font-medium mb-3">
-          Broker Information
+          {t('contactInfo.brokerInfo')}
         </h4>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Broker Firm Name
+              {t('contactInfo.brokerFirmName')}
               {autoFilledFields.includes("name_brokerfirm") && (
                 <span className="ml-2 text-xs bg-[#5169FE]/10 text-[#5169FE] px-2 py-0.5 rounded">
                   AI Filled
@@ -123,13 +126,13 @@ const ContactInfoStep: React.FC<ContactInfoStepProps> = ({
                   ? "bg-[#5169FE]/5 border border-[#5169FE]/30"
                   : "bg-white border border-gray-300"
               } focus:ring-2 focus:ring-[#5169FE] focus:border-transparent`}
-              placeholder="Enter broker firm name"
+              placeholder={t('contactInfo.enterBrokerFirmName')}
             />
           </div>
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-              Broker Firm Address
+              {t('contactInfo.brokerFirmAddress')}
               {autoFilledFields.includes("address_brokerfirm") && (
                 <span className="ml-2 text-xs bg-[#5169FE]/10 text-[#5169FE] px-2 py-0.5 rounded">
                   AI Filled
@@ -146,7 +149,7 @@ const ContactInfoStep: React.FC<ContactInfoStepProps> = ({
                   ? "bg-[#5169FE]/5 border border-[#5169FE]/30"
                   : "bg-white border border-gray-300"
               } focus:ring-2 focus:ring-[#5169FE] focus:border-transparent`}
-              placeholder="Enter broker firm address"
+              placeholder={t('contactInfo.enterBrokerFirmAddress')}
             />
           </div>
         </div>

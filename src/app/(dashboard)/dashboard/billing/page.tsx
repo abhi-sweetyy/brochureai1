@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import i18n, { forceReloadTranslations } from '@/app/i18n';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -24,6 +26,20 @@ export default function BillingPage() {
   const supabase = createClientComponentClient();
   const [userCredits, setUserCredits] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const { t } = useTranslation();
+  const [i18nInitialized, setI18nInitialized] = useState(false);
+
+  // Force reload translations when component mounts
+  useEffect(() => {
+    const loadTranslations = async () => {
+      if (i18n.language) {
+        await forceReloadTranslations(i18n.language);
+        setI18nInitialized(true);
+      }
+    };
+    
+    loadTranslations();
+  }, []);
 
   // Fetch user credits
   useEffect(() => {
@@ -69,7 +85,7 @@ export default function BillingPage() {
 
   const handlePurchaseCredits = async (packageId: string) => {
     if (!session?.user?.id) {
-      toast.error("You must be logged in to purchase credits");
+      toast.error(t("billing.mustBeLoggedIn"));
       return;
     }
 
@@ -79,7 +95,7 @@ export default function BillingPage() {
       // Find the selected package
       const selectedPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId);
       if (!selectedPackage) {
-        throw new Error("Invalid package selected");
+        throw new Error(t("billing.invalidPackage"));
       }
       
       // Simulate payment processing delay
@@ -112,10 +128,10 @@ export default function BillingPage() {
       // Update local state
       setUserCredits(newCreditAmount);
       
-      toast.success(`Successfully purchased ${selectedPackage.credits} credits!`);
+      toast.success(t("billing.purchaseSuccess", { credits: selectedPackage.credits }));
     } catch (error) {
       console.error("Error purchasing credits:", error);
-      toast.error("Failed to process your purchase. Please try again.");
+      toast.error(t("billing.purchaseFailed"));
     } finally {
       setIsProcessing(null);
     }
@@ -126,7 +142,7 @@ export default function BillingPage() {
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center">
           <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-800">Loading...</p>
+          <p className="text-gray-800">{t("billing.loading")}</p>
         </div>
       </div>
     );
@@ -144,24 +160,24 @@ export default function BillingPage() {
       
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Billing & Credits</h1>
-          <p className="text-gray-600 mt-2">Purchase credits to create brochures and use premium features</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t("billing.title")}</h1>
+          <p className="text-gray-600 mt-2">{t("billing.subtitle")}</p>
         </div>
 
         {/* Credit Balance Card */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-xl p-6 mb-8 text-white">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div>
-              <p className="text-blue-100 text-sm mb-1">Current Balance</p>
-              <h2 className="text-4xl font-bold">{userCredits !== null ? userCredits : '...'} Credits</h2>
-              <p className="mt-2 text-blue-100">Each brochure costs 1 credit to generate</p>
+              <p className="text-blue-100 text-sm mb-1">{t("billing.currentBalance")}</p>
+              <h2 className="text-4xl font-bold">{userCredits !== null ? userCredits : '...'} {t("billing.credits")}</h2>
+              <p className="mt-2 text-blue-100">{t("billing.costPerBrochure")}</p>
             </div>
             <div className="mt-4 md:mt-0">
               <button 
                 onClick={() => document.getElementById('credit-packages')?.scrollIntoView({ behavior: 'smooth' })}
                 className="px-6 py-2.5 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors"
               >
-                Buy More Credits
+                {t("billing.buyMoreCredits")}
               </button>
             </div>
           </div>
@@ -170,8 +186,8 @@ export default function BillingPage() {
         {/* Credit Packages */}
         <div id="credit-packages" className="bg-white border border-gray-200 rounded-xl shadow-md p-8 mb-12">
           <div className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Credit Packages</h2>
-            <p className="text-gray-600">Choose a package that suits your needs</p>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t("billing.creditPackages")}</h2>
+            <p className="text-gray-600">{t("billing.choosePackage")}</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -185,12 +201,12 @@ export default function BillingPage() {
               >
                 {pkg.popular && (
                   <div className="absolute -top-3 right-4 px-3 py-1 bg-blue-600 text-white text-xs rounded-full">
-                    Most Popular
+                    {t("billing.mostPopular")}
                   </div>
                 )}
                 {pkg.bestValue && (
                   <div className="absolute -top-3 right-4 px-3 py-1 bg-green-600 text-white text-xs rounded-full">
-                    Best Value
+                    {t("billing.bestValue")}
                   </div>
                 )}
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">{pkg.name}</h3>
@@ -198,18 +214,18 @@ export default function BillingPage() {
                   <span className="text-3xl font-bold text-gray-900">${pkg.price.toFixed(2)}</span>
                 </div>
                 <div className="mb-6 pb-6 border-b border-gray-200">
-                  <p className="text-sm text-gray-600 mb-2">What's included:</p>
+                  <p className="text-sm text-gray-600 mb-2">{t("billing.whatsIncluded")}:</p>
                   <div className="flex items-center text-gray-700 mb-2">
                     <svg className="w-5 h-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="font-medium">{pkg.credits} Credits</span>
+                    <span className="font-medium">{pkg.credits} {t("billing.credits")}</span>
                   </div>
                   <div className="flex items-center text-gray-700">
                     <svg className="w-5 h-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span>Just ${(pkg.price / pkg.credits).toFixed(2)} per credit</span>
+                    <span>{t("billing.justPerCredit", { price: (pkg.price / pkg.credits).toFixed(2) })}</span>
                   </div>
                 </div>
                 <button
@@ -227,10 +243,10 @@ export default function BillingPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Processing...
+                      {t("billing.processing")}
                     </span>
                   ) : (
-                    'Purchase Now'
+                    t("billing.purchaseNow")
                   )}
                 </button>
               </div>
@@ -240,7 +256,7 @@ export default function BillingPage() {
 
         {/* Usage Information */}
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 mb-12">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">How Credits Work</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("billing.howCreditsWork")}</h2>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="flex space-x-4">
               <div className="flex-shrink-0">
@@ -251,8 +267,8 @@ export default function BillingPage() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-900">Purchase Credits</h3>
-                <p className="mt-1 text-gray-600">Buy credit packages that best suit your needs.</p>
+                <h3 className="text-lg font-medium text-gray-900">{t("billing.purchaseCredits")}</h3>
+                <p className="mt-1 text-gray-600">{t("billing.purchaseCreditsDesc")}</p>
               </div>
             </div>
             <div className="flex space-x-4">
@@ -264,8 +280,8 @@ export default function BillingPage() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-900">Create Brochures</h3>
-                <p className="mt-1 text-gray-600">Use 1 credit for each brochure you generate.</p>
+                <h3 className="text-lg font-medium text-gray-900">{t("billing.createBrochures")}</h3>
+                <p className="mt-1 text-gray-600">{t("billing.createBrochuresDesc")}</p>
               </div>
             </div>
             <div className="flex space-x-4">
@@ -277,8 +293,8 @@ export default function BillingPage() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-900">No Expiration</h3>
-                <p className="mt-1 text-gray-600">Your credits never expire and can be used anytime.</p>
+                <h3 className="text-lg font-medium text-gray-900">{t("billing.noExpiration")}</h3>
+                <p className="mt-1 text-gray-600">{t("billing.noExpirationDesc")}</p>
               </div>
             </div>
           </div>

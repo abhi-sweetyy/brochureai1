@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import ImageUploader from '@/components/ImageUploader';
 import { availablePages, PageOption } from './PagesSelectionStep';
 
@@ -33,6 +34,7 @@ export function ImagesStep({
   setLogoUrl,
   selectedPages = {}
 }: ImagesStepProps) {
+  const { t } = useTranslation();
   const [logo, setLogo] = useState<string>(logoUrl || '');
   const [agent, setAgent] = useState<string>(uploadedImages['{{agent}}'] || '');
   const [image1, setImage1] = useState<string>(uploadedImages['{{image1}}'] || '');
@@ -197,8 +199,8 @@ export function ImagesStep({
     // Company Logo - Always shown
     sections.push(
       <div key="logo" className="mb-8">
-        <h3 className="text-lg font-semibold mb-2">Company Logo</h3>
-        <p className="text-gray-600 mb-4">Upload your company logo that will appear on all pages</p>
+        <h3 className="text-lg font-semibold mb-2">{t('imagesStep.companyLogo')}</h3>
+        <p className="text-gray-600 mb-4">{t('imagesStep.companyLogoDesc')}</p>
         <ImageUploader
           existingImages={logoUrl ? [logoUrl] : []}
           onImagesUploaded={(urls) => {
@@ -213,8 +215,8 @@ export function ImagesStep({
     // Agent Photo - Always shown
     sections.push(
       <div key="agent" className="mb-8">
-        <h3 className="text-lg font-semibold mb-2">Agent Photo</h3>
-        <p className="text-gray-600 mb-4">Upload a professional photo of the agent</p>
+        <h3 className="text-lg font-semibold mb-2">{t('imagesStep.agentPhoto')}</h3>
+        <p className="text-gray-600 mb-4">{t('imagesStep.agentPhotoDesc')}</p>
         <ImageUploader
           existingImages={uploadedImages['{{agent}}'] ? [uploadedImages['{{agent}}']] : []}
           onImagesUploaded={(urls) => {
@@ -230,8 +232,8 @@ export function ImagesStep({
     if (selectedPages.projectOverview) {
       sections.push(
         <div key="overview" className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Project Overview Image</h3>
-          <p className="text-gray-600 mb-4">Upload the main project image</p>
+          <h3 className="text-lg font-semibold mb-2">{t('imagesStep.projectOverview')}</h3>
+          <p className="text-gray-600 mb-4">{t('imagesStep.projectOverviewDesc')}</p>
           <ImageUploader
             existingImages={image1 ? [image1] : []}
             onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image1}}', urls)}
@@ -246,8 +248,8 @@ export function ImagesStep({
     if (selectedPages.buildingLayout) {
       sections.push(
         <div key="layout" className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Building Layout Plan</h3>
-          <p className="text-gray-600 mb-4">Upload the building layout plan</p>
+          <h3 className="text-lg font-semibold mb-2">{t('imagesStep.buildingLayout')}</h3>
+          <p className="text-gray-600 mb-4">{t('imagesStep.buildingLayoutDesc')}</p>
           <ImageUploader
             existingImages={image2 ? [image2] : []}
             onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image2}}', urls)}
@@ -262,11 +264,11 @@ export function ImagesStep({
     if (selectedPages.exteriorPhotos) {
       sections.push(
         <div key="exterior" className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Exterior Photos</h3>
-          <p className="text-gray-600 mb-4">Upload exterior photos of the property (max 2)</p>
+          <h3 className="text-lg font-semibold mb-2">{t('imagesStep.exteriorPhotos')}</h3>
+          <p className="text-gray-600 mb-4">{t('imagesStep.exteriorPhotosDesc')}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500 mb-2">Exterior Photo 1</p>
+              <p className="text-sm text-gray-500 mb-2">{t('imagesStep.exteriorPhoto1')}</p>
               <ImageUploader
                 existingImages={image3 ? [image3] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image3}}', urls)}
@@ -275,7 +277,7 @@ export function ImagesStep({
               />
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-2">Exterior Photo 2</p>
+              <p className="text-sm text-gray-500 mb-2">{t('imagesStep.exteriorPhoto2')}</p>
               <ImageUploader
                 existingImages={image4 ? [image4] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image4}}', urls)}
@@ -292,11 +294,11 @@ export function ImagesStep({
     if (selectedPages.interiorPhotos) {
       sections.push(
         <div key="interior" className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Interior Photos</h3>
-          <p className="text-gray-600 mb-4">Upload interior photos of the property (max 2)</p>
+          <h3 className="text-lg font-semibold mb-2">{t('imagesStep.interiorPhotos')}</h3>
+          <p className="text-gray-600 mb-4">{t('imagesStep.interiorPhotosDesc')}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500 mb-2">Interior Photo 1</p>
+              <p className="text-sm text-gray-500 mb-2">{t('imagesStep.interiorPhoto1')}</p>
               <ImageUploader
                 existingImages={image5 ? [image5] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image5}}', urls)}
@@ -305,7 +307,7 @@ export function ImagesStep({
               />
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-2">Interior Photo 2</p>
+              <p className="text-sm text-gray-500 mb-2">{t('imagesStep.interiorPhoto2')}</p>
               <ImageUploader
                 existingImages={image6 ? [image6] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image6}}', urls)}
@@ -322,8 +324,8 @@ export function ImagesStep({
     if (selectedPages.floorPlan) {
       sections.push(
         <div key="floorplan" className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Floor Plan</h3>
-          <p className="text-gray-600 mb-4">Upload the floor plan image</p>
+          <h3 className="text-lg font-semibold mb-2">{t('imagesStep.floorPlan')}</h3>
+          <p className="text-gray-600 mb-4">{t('imagesStep.floorPlanDesc')}</p>
           <ImageUploader
             existingImages={image7 ? [image7] : []}
             onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image7}}', urls)}
@@ -338,11 +340,11 @@ export function ImagesStep({
     if (selectedPages.energyCertificate) {
       sections.push(
         <div key="energy" className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Energy Certificate</h3>
-          <p className="text-gray-600 mb-4">Upload the energy certificate images (max 2)</p>
+          <h3 className="text-lg font-semibold mb-2">{t('imagesStep.energyCertificate')}</h3>
+          <p className="text-gray-600 mb-4">{t('imagesStep.energyCertificateDesc')}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500 mb-2">Energy Certificate Page 1</p>
+              <p className="text-sm text-gray-500 mb-2">{t('imagesStep.energyPage1')}</p>
               <ImageUploader
                 existingImages={image8 ? [image8] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image8}}', urls)}
@@ -351,7 +353,7 @@ export function ImagesStep({
               />
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-2">Energy Certificate Page 2</p>
+              <p className="text-sm text-gray-500 mb-2">{t('imagesStep.energyPage2')}</p>
               <ImageUploader
                 existingImages={image9 ? [image9] : []}
                 onImagesUploaded={(urls: string[]) => handleImageUpdate('{{image9}}', urls)}
@@ -371,7 +373,7 @@ export function ImagesStep({
     <div className="space-y-8">
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
         <p className="text-blue-400">
-          Upload images for your selected pages. The system will automatically organize them in your brochure.
+          {t('imagesStep.uploadInfo')}
         </p>
       </div>
       {getImageSections()}

@@ -1,17 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { useLanguage } from "@/app/contexts/LanguageContext"; // Adjust path as needed
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { t } = useTranslation();
-  const { currentLanguage, changeLanguage } = useLanguage();
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
   // Function to scroll to sections
   const scrollToSection = (sectionId: string) => {
@@ -20,18 +17,6 @@ export default function Navbar() {
       element.scrollIntoView({ behavior: "smooth" });
     }
     setIsMobileMenuOpen(false);
-  };
-
-  // Language options with proper flag image paths
-  const languages = [
-    { code: "en", flag: "/flags/en.png" },
-    { code: "de", flag: "/flags/de.png" },
-  ];
-
-  // Change language function
-  const handleLanguageChange = (langCode: string) => {
-    changeLanguage(langCode);
-    setIsLanguageDropdownOpen(false);
   };
 
   // Handle scroll events to change navbar appearance
@@ -46,31 +31,6 @@ export default function Navbar() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Click outside to close language dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        languageDropdownRef.current &&
-        !languageDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsLanguageDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Effect to load saved language preference on initial load
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedLanguage = localStorage.getItem("preferred-language");
-      if (savedLanguage && savedLanguage !== currentLanguage) {
-        changeLanguage(savedLanguage);
-      }
-    }
   }, []);
 
   // Navigation items
@@ -120,66 +80,8 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3 md:gap-4">
-          {/* Language Selector - Fixed width */}
-          <div className="relative" ref={languageDropdownRef}>
-            <button
-              onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-              className="flex items-center justify-between w-20 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-[#171717] transition-colors"
-              aria-label="Select language"
-            >
-              <div className="flex items-center">
-                <img
-                  src={
-                    languages.find((lang) => lang.code === currentLanguage)
-                      ?.flag || "/flags/en.png"
-                  }
-                  alt={`${currentLanguage} flag`}
-                  className="w-5 h-4 object-cover"
-                />
-                <span className="ml-1">{currentLanguage.toUpperCase()}</span>
-              </div>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-4 w-4 transition-transform duration-200 ${isLanguageDropdownOpen ? "rotate-180" : ""}`}
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-
-            {/* Language Dropdown with animation */}
-            <div 
-              className={`absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg overflow-hidden z-50 border border-gray-200 transition-all duration-200 origin-top-right ${
-                isLanguageDropdownOpen 
-                  ? 'transform scale-100 opacity-100' 
-                  : 'transform scale-95 opacity-0 pointer-events-none'
-              }`}
-            >
-              {languages.map((language) => (
-                <button
-                  key={language.code}
-                  onClick={() => handleLanguageChange(language.code)}
-                  className={`flex items-center w-full px-4 py-2.5 text-sm text-left hover:bg-gray-100 transition-colors ${
-                    currentLanguage === language.code ? "bg-gray-50" : ""
-                  }`}
-                >
-                  <img
-                    src={language.flag}
-                    alt={`${language.code} flag`}
-                    className="w-5 h-4 object-cover mr-2"
-                  />
-                  <span className="text-gray-600">
-                    {language.code.toUpperCase()}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Language Switcher Component */}
+          <LanguageSwitcher />
 
           {/* Login button */}
           <Link href="/dashboard" className="hidden sm:block">
@@ -246,35 +148,6 @@ export default function Navbar() {
                 {t("login")}
               </button>
             </Link>
-
-            {/* Mobile Language Selector */}
-            <div className="py-2 border-t border-gray-100 mt-1">
-              <p className="text-xs text-gray-500 mb-2 ml-1">
-                {t("navbar.selectLanguage", "Select Language")}
-              </p>
-              <div className="flex gap-2">
-                {languages.map((language) => (
-                  <button
-                    key={language.code}
-                    onClick={() => handleLanguageChange(language.code)}
-                    className={`flex items-center px-3 py-2 rounded-lg ${
-                      currentLanguage === language.code
-                        ? "bg-gray-200 text-[#171717]"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    <img
-                      src={language.flag}
-                      alt={`${language.code} flag`}
-                      className="w-5 h-4 object-cover mr-1"
-                    />
-                    <span className="text-xs font-medium">
-                      {language.code.toUpperCase()}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>

@@ -5,7 +5,10 @@ import {
   Paper,
   Typography,
 } from "@mui/material";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from '@/app/i18n';
+import { useLanguage } from '@/app/contexts/LanguageContext';
 
 export interface PageOption {
   id: string;
@@ -72,6 +75,27 @@ export const PagesSelectionStep: React.FC<PagesSelectionStepProps> = ({
   selectedPages,
   onPagesChange,
 }) => {
+  const { t, i18n: translationInstance } = useTranslation();
+  const { currentLanguage } = useLanguage();
+  const [, forceUpdate] = useState({});
+  
+  // Force component to re-render when language changes
+  useEffect(() => {
+    console.log("Language in PagesSelectionStep changed to:", currentLanguage);
+    console.log("PagesSelectionStep i18n instance language:", translationInstance.language);
+    console.log("Global i18n instance language:", i18n.language);
+    
+    // Test translation of a key
+    const selectionTitle = t('pagesSelection.title');
+    console.log("Translation test - pagesSelection.title:", selectionTitle);
+    if (selectionTitle === 'pagesSelection.title') {
+      console.warn("Translation not working correctly in PagesSelectionStep - showing key instead of value");
+    }
+    
+    // Force component re-render to ensure translations are updated
+    forceUpdate({});
+  }, [currentLanguage, translationInstance.language, t]);
+  
   const handlePageChange = (pageId: string, checked: boolean) => {
     const newSelectedPages = {
       ...selectedPages,
@@ -80,16 +104,28 @@ export const PagesSelectionStep: React.FC<PagesSelectionStepProps> = ({
     onPagesChange(newSelectedPages);
   };
 
+  const getTranslatedLabel = (pageId: string, defaultLabel: string): string => {
+    const translationKey = `pages.${pageId}`;
+    const translation = t(translationKey);
+    
+    // Log translation status for debugging
+    if (translation === translationKey) {
+      console.log(`Translation not found for: ${translationKey}, using default: ${defaultLabel}`);
+    }
+    
+    // If the translation key doesn't exist and returns the key itself, use the default label
+    return translation === translationKey ? defaultLabel : translation;
+  };
+
   return (
     <Paper
       sx={{ p: 3, bgcolor: "white", borderColor: "grey.200", boxShadow: 1 }}
     >
       <Typography variant="h6" gutterBottom sx={{ color: "#171717" }}>
-        Select Pages to Include
+        {t('pagesSelection.title')}
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-        Choose the pages you want to include in your listing. The number in
-        brackets indicates required images for each page.
+        {t('pagesSelection.description')}
       </Typography>
 
       <FormGroup>
@@ -110,7 +146,7 @@ export const PagesSelectionStep: React.FC<PagesSelectionStepProps> = ({
             }
             label={
               <Typography sx={{ color: "#171717" }}>
-                {`${page.label} ${page.requiredImages > 0 ? `(${page.requiredImages} image${page.requiredImages > 1 ? "s" : ""})` : ""}`}
+                {`${getTranslatedLabel(page.id, page.label)} ${page.requiredImages > 0 ? `(${page.requiredImages} ${page.requiredImages > 1 ? t('pagesSelection.images') : t('pagesSelection.image')})` : ""}`}
               </Typography>
             }
           />

@@ -1,45 +1,101 @@
-import React, { createContext, useState, useContext, ReactNode } from "react";
-import { useTranslation } from "react-i18next";
+"use client";
 
-type LanguageContextType = {
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import i18n from '@/app/i18n';
+
+interface LanguageContextType {
   currentLanguage: string;
-  changeLanguage: (langCode: string) => void;
+  changeLanguage: (lang: string) => Promise<void>;
+  isReady: boolean;
+}
+
+const defaultContext: LanguageContextType = {
+  currentLanguage: 'en',
+  changeLanguage: async () => {},
+  isReady: false,
 };
 
-const LanguageContext = createContext<LanguageContextType | undefined>(
-  undefined,
-);
+const LanguageContext = createContext<LanguageContextType>(defaultContext);
 
-export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const { i18n } = useTranslation();
-  const [currentLanguage, setCurrentLanguage] = useState(i18n.language || "en");
+export const useLanguage = () => useContext(LanguageContext);
 
-  const changeLanguage = (langCode: string) => {
-    i18n.changeLanguage(langCode);
-    setCurrentLanguage(langCode);
+export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
+  const [currentLanguage, setCurrentLanguage] = useState<string>(i18n.language || 'en');
+  const [isReady, setIsReady] = useState<boolean>(i18n.isInitialized);
 
-    // Store the language preference in localStorage for persistence
-    if (typeof window !== "undefined") {
-      localStorage.setItem("preferred-language", langCode);
+  useEffect(() => {
+    // Debug when component mounts
+    console.log('LanguageProvider mounted, current i18n language:', i18n.language);
+    console.log('i18n initialized:', i18n.isInitialized);
+    
+    // Set up initialized event handler
+    const handleInitialized = () => {
+      console.log('i18n initialized event fired');
+      setIsReady(true);
+    };
+    
+    if (!i18n.isInitialized) {
+      i18n.on('initialized', handleInitialized);
+    } else {
+      setIsReady(true);
     }
+    
+    // Listen for language changes
+    const handleLanguageChanged = (lng: string) => {
+      console.log('i18n language changed event:', lng);
+      setCurrentLanguage(lng);
+    };
+    
+    i18n.on('languageChanged', handleLanguageChanged);
+    
+    // Try to load saved language preference from localStorage on initial load
+    if (typeof window !== 'undefined') {
+      const savedLanguage = localStorage.getItem('preferred-language');
+      console.log('Saved language from localStorage:', savedLanguage);
+      
+      if (savedLanguage && ['en', 'de'].includes(savedLanguage)) {
+        changeLanguage(savedLanguage);
+      } else {
+        // Check browser language
+        const browserLang = navigator.language.split('-')[0];
+        console.log('Browser language:', browserLang);
+        
+        if (['en', 'de'].includes(browserLang)) {
+          changeLanguage(browserLang);
+        }
+      }
+    }
+    
+    // Clean up event listeners
+    return () => {
+      i18n.off('initialized', handleInitialized);
+      i18n.off('languageChanged', handleLanguageChanged);
+    };
+  }, []);
 
-    // Optionally, you might want to adjust HTML lang attribute
-    if (typeof document !== "undefined") {
-      document.documentElement.lang = langCode;
+  const changeLanguage = async (lang: string): Promise<void> => {
+    console.log('Changing language to:', lang);
+    
+    try {
+      // Force a reload of the i18n instance with the new language
+      await i18n.changeLanguage(lang);
+      
+      console.log('Language changed successfully, new i18n language:', i18n.language);
+      setCurrentLanguage(lang);
+      localStorage.setItem('preferred-language', lang);
+      
+      // Force components to re-render with the new language
+      window.dispatchEvent(new Event('languageChanged'));
+    } catch (err) {
+      console.error('Error changing language:', err);
     }
   };
 
   return (
-    <LanguageContext.Provider value={{ currentLanguage, changeLanguage }}>
+    <LanguageContext.Provider value={{ currentLanguage, changeLanguage, isReady }}>
       {children}
     </LanguageContext.Provider>
   );
 };
 
-export const useLanguage = () => {
-  const context = useContext(LanguageContext);
-  if (context === undefined) {
-    throw new Error("useLanguage must be used within a LanguageProvider");
-  }
-  return context;
-};
+export default LanguageContext;

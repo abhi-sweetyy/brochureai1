@@ -10,6 +10,8 @@ import ImageUploader from '@/components/ImageUploader';
 import { toast } from 'react-hot-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import i18n, { forceReloadTranslations } from '@/app/i18n';
 
 // Define only the fields we need for our placeholders
 interface Project {
@@ -42,6 +44,7 @@ export default function ProjectEditor() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const { session } = useSessionContext();
+  const { t } = useTranslation();
   
   const [project, setProject] = useState<Project | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -58,6 +61,19 @@ export default function ProjectEditor() {
   const [isLoading, setIsLoading] = useState(true);
   const [credits, setCredits] = useState<number | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [i18nInitialized, setI18nInitialized] = useState(false);
+
+  // Force reload translations when component mounts
+  useEffect(() => {
+    const loadTranslations = async () => {
+      if (i18n.language) {
+        await forceReloadTranslations(i18n.language);
+        setI18nInitialized(true);
+      }
+    };
+    
+    loadTranslations();
+  }, []);
 
   // Fetch project data with security checks
   useEffect(() => {
@@ -435,7 +451,7 @@ export default function ProjectEditor() {
       return (
         <div className="flex items-center justify-center py-10">
           <div className="text-center">
-            <p className="text-red-600">Project data not available</p>
+            <p className="text-red-600">{t('project.dataNotAvailable')}</p>
           </div>
         </div>
       );
@@ -455,8 +471,8 @@ export default function ProjectEditor() {
 
     return (
       <>
-        <h1 className="text-2xl font-bold text-gray-900">{project.title || 'Untitled Project'}</h1>
-        <p className="text-gray-600">{project.address || 'No address'}</p>
+        <h1 className="text-2xl font-bold text-gray-900">{project.title || t('project.untitledProject')}</h1>
+        <p className="text-gray-600">{project.address || t('project.noAddress')}</p>
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
           {!project.presentation_id && (
@@ -471,7 +487,7 @@ export default function ProjectEditor() {
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    Property Info
+                    {t('project.propertyInfo')}
                   </button>
                   <button
                     onClick={() => setActiveTab('descriptions')}
@@ -481,7 +497,7 @@ export default function ProjectEditor() {
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    Descriptions
+                    {t('project.descriptions')}
                   </button>
                   <button
                     onClick={() => setActiveTab('images')}
@@ -491,7 +507,7 @@ export default function ProjectEditor() {
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    Images
+                    {t('project.images')}
                   </button>
                 </div>
 
@@ -500,7 +516,7 @@ export default function ProjectEditor() {
                     <div className="space-y-6">
                       <div>
                         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                          Property Title
+                          {t('project.propertyTitle')}
                         </label>
                         <input
                           type="text"
@@ -514,7 +530,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                          Property Address
+                          {t('project.propertyAddress')}
                         </label>
                         <input
                           type="text"
@@ -528,7 +544,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                          Price
+                          {t('project.price')}
                         </label>
                         <input
                           type="text"
@@ -542,7 +558,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="date_available" className="block text-sm font-medium text-gray-700 mb-1">
-                          Date Available
+                          {t('project.dateAvailable')}
                         </label>
                         <input
                           type="text"
@@ -556,7 +572,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
-                          Phone Number
+                          {t('project.phoneNumber')}
                         </label>
                         <input
                           type="text"
@@ -570,7 +586,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="email_address" className="block text-sm font-medium text-gray-700 mb-1">
-                          Email Address
+                          {t('project.emailAddress')}
                         </label>
                         <input
                           type="email"
@@ -584,7 +600,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="website_name" className="block text-sm font-medium text-gray-700 mb-1">
-                          Website
+                          {t('project.website')}
                         </label>
                         <input
                           type="text"
@@ -598,7 +614,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="name_brokerfirm" className="block text-sm font-medium text-gray-700 mb-1">
-                          Broker Firm Name
+                          {t('project.brokerFirmName')}
                         </label>
                         <input
                           type="text"
@@ -612,7 +628,7 @@ export default function ProjectEditor() {
                       
                       <div>
                         <label htmlFor="address_brokerfirm" className="block text-sm font-medium text-gray-700 mb-1">
-                          Broker Firm Address
+                          {t('project.brokerFirmAddress')}
                         </label>
                         <input
                           type="text"
@@ -630,7 +646,7 @@ export default function ProjectEditor() {
                     <div className="space-y-6">
                       <div>
                         <label htmlFor="shortdescription" className="block text-sm font-medium text-gray-700 mb-1">
-                          Short Description
+                          {t('project.shortDescription')}
                         </label>
                         <textarea
                           id="shortdescription"
@@ -639,13 +655,13 @@ export default function ProjectEditor() {
                           onChange={handleInputChange}
                           rows={3}
                           className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Brief description of the property"
+                          placeholder={t('project.briefDescriptionPlaceholder')}
                         />
                       </div>
                       
                       <div>
                         <label htmlFor="descriptionlarge" className="block text-sm font-medium text-gray-700 mb-1">
-                          Layout Description
+                          {t('project.layoutDescription')}
                         </label>
                         <textarea
                           id="descriptionlarge"
@@ -654,13 +670,13 @@ export default function ProjectEditor() {
                           onChange={handleInputChange}
                           rows={4}
                           className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Detailed layout description of the property"
+                          placeholder={t('project.detailedLayoutPlaceholder')}
                         />
                       </div>
                       
                       <div>
                         <label htmlFor="descriptionextralarge" className="block text-sm font-medium text-gray-700 mb-1">
-                          Detailed Description
+                          {t('project.detailedDescription')}
                         </label>
                         <textarea
                           id="descriptionextralarge"
@@ -669,7 +685,7 @@ export default function ProjectEditor() {
                           onChange={handleInputChange}
                           rows={6}
                           className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Comprehensive property description"
+                          placeholder={t('project.comprehensiveDescriptionPlaceholder')}
                         />
                       </div>
                     </div>
@@ -679,12 +695,12 @@ export default function ProjectEditor() {
                     <div className="space-y-6">
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                         <p className="text-blue-700">
-                          Upload and manage images for your project. These images will be used in your brochure.
+                          {t('project.uploadImagesInfo')}
                         </p>
                       </div>
                       
                       <div className="bg-gray-50 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Property Images</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('project.propertyImages')}</h3>
                         <ImageUploader
                           images={uploadedImages}
                           onUpload={handleImagesUploaded}
@@ -710,7 +726,7 @@ export default function ProjectEditor() {
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    Previous
+                    {t('project.previous')}
                   </button>
                   
                   <motion.button
@@ -725,10 +741,10 @@ export default function ProjectEditor() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Saving...
+                        {t('project.saving')}
                       </>
                     ) : (
-                      <>Save Changes</>
+                      <>{t('project.saveChanges')}</>
                     )}
                   </motion.button>
                   
@@ -744,7 +760,7 @@ export default function ProjectEditor() {
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
-                    Next
+                    {t('project.next')}
                   </button>
                 </div>
               </div>
@@ -786,7 +802,7 @@ export default function ProjectEditor() {
       <div className="container mx-auto px-4 py-12">
         {error ? (
           <div className="bg-red-100 border border-red-300 text-red-600 p-6 rounded-lg">
-            <h2 className="text-xl font-semibold mb-2">Error</h2>
+            <h2 className="text-xl font-semibold mb-2">{t('project.error')}</h2>
             <p>{error}</p>
           </div>
         ) : isLoading ? (
@@ -796,7 +812,7 @@ export default function ProjectEditor() {
         ) : !project ? (
           <div className="flex items-center justify-center py-10">
             <div className="text-center">
-              <p className="text-red-600">Project data not available</p>
+              <p className="text-red-600">{t('project.dataNotAvailable')}</p>
             </div>
           </div>
         ) : (
