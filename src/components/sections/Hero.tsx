@@ -68,7 +68,7 @@ export default function Hero() {
                 <span className="text-gray-700">
                   {t(
                     "hero.feature3",
-                    "Heben Sie sich von der Konkurrenz mit Premium-Marketingmaterialien ab",
+                    "Heben Sie sich von der Konkurrenz mit Premium-Materialien ab",
                   )}
                 </span>
               </li>
@@ -85,7 +85,7 @@ export default function Hero() {
                 onClick={() => scrollToSection("demo")}
                 className="w-full sm:w-auto px-5 py-2.5 bg-white text-[#5169FE] border border-[#5169FE] rounded-lg font-medium hover:bg-gray-50 transition-colors"
               >
-                {t("hero.seeExamples", "Beispiele ansehen")}
+                {t("hero.seeExamples", "Demo ansehen")}
               </button>
             </div>
           </div>

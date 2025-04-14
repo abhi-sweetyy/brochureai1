@@ -54,13 +54,13 @@ export default function TrustedBy() {
           {t("trustedBy.title", "Vertraut von erfahrenen Immobilienmaklern")}
         </h2>
 
-        {/* Logos marquee container with improved gradient effects */}
+        {/* Logos marquee container with subtle equal gradients */}
         <div className="relative overflow-hidden">
-          {/* Gradient fade on edges with matched effects */}
-          <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-[#F8F8FC] via-[#F8F8FC]/80 to-transparent z-10"></div>
-          <div className="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-[#F8F8FC] via-[#F8F8FC]/80 to-transparent z-10"></div>
+          {/* Custom CSS gradients for more natural spread */}
+          <div className="custom-gradient-left"></div>
+          <div className="custom-gradient-right"></div>
 
-          {/* Scrolling logos with slight padding for better gradient effect */}
+          {/* Scrolling logos */}
           <div
             className={`flex items-center space-x-8 sm:space-x-16 py-4 px-4 animate-scroll-slow transition-all duration-700 delay-500 transform ${
               isVisible
@@ -99,7 +99,7 @@ export default function TrustedBy() {
         </div>
       </div>
 
-      {/* Add custom styles for animation */}
+      {/* Add custom styles for animation and gradients */}
       <style jsx global>{`
         @keyframes scroll {
           0% {
@@ -111,6 +111,25 @@ export default function TrustedBy() {
         }
         .animate-scroll-slow {
           animation: scroll 30s linear infinite;
+        }
+        
+        .custom-gradient-left {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 100%;
+          width: 36px;
+          z-index: 10;
+          background: linear-gradient(to right, #F8F8FC 10%, rgba(248, 248, 252, 0.8) 30%, rgba(248, 248, 252, 0.5) 50%, rgba(248, 248, 252, 0.2) 75%, transparent 100%);
+        }
+        .custom-gradient-right {
+          position: absolute;
+          right: 0;
+          top: 0;
+          height: 100%;
+          width: 36px;
+          z-index: 10;
+          background: linear-gradient(to left, #F8F8FC 10%, rgba(248, 248, 252, 0.8) 30%, rgba(248, 248, 252, 0.5) 50%, rgba(248, 248, 252, 0.2) 75%, transparent 100%);
         }
       `}</style>
     </section>
