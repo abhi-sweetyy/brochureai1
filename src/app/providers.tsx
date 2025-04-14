@@ -16,10 +16,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     })();
   }, []);
   
-  // Show a minimal loading state until i18n is initialized
-  if (!isI18nInitialized) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+
   
   return (
     <I18nextProvider i18n={i18n}>
