@@ -62,12 +62,18 @@ export default function ProjectEditor() {
   const [credits, setCredits] = useState<number | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [i18nInitialized, setI18nInitialized] = useState(false);
+  const [projectLoaded, setProjectLoaded] = useState(false);
 
   // Force reload translations when component mounts
   useEffect(() => {
     const loadTranslations = async () => {
       if (i18n.language) {
-        await forceReloadTranslations(i18n.language);
+        const success = await forceReloadTranslations(i18n.language);
+        if (success) {
+          setI18nInitialized(true);
+        }
+      } else {
+        // If no language is set, consider translations initialized anyway
         setI18nInitialized(true);
       }
     };
@@ -75,12 +81,29 @@ export default function ProjectEditor() {
     loadTranslations();
   }, []);
 
+  // Update loading state based on both translation and project loading
+  useEffect(() => {
+    if (i18nInitialized && projectLoaded) {
+      setIsLoading(false);
+    }
+  }, [i18nInitialized, projectLoaded]);
+
+  // Add a timeout to ensure loading state is eventually turned off
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.log("Loading timeout reached, forcing loading state to false");
+        setIsLoading(false);
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [isLoading]);
+
   // Fetch project data with security checks
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        setIsLoading(true);
-        
         if (!session?.user?.id) {
           router.replace('/sign-in');
           return;
@@ -101,14 +124,14 @@ export default function ProjectEditor() {
         
         if (!projectData) {
           setError('Project not found');
-          setIsLoading(false);
+          setProjectLoaded(true);
           return;
         }
 
         // Security check: Make sure the user owns this project
         if (projectData.user_id !== session.user.id) {
           setError('You do not have permission to view this project');
-          setIsLoading(false);
+          setProjectLoaded(true);
           return;
         }
 
@@ -166,7 +189,7 @@ export default function ProjectEditor() {
         console.error('Error fetching project:', error);
         setError(error.message || 'Failed to load project data');
       } finally {
-        setIsLoading(false);
+        setProjectLoaded(true);
       }
     };
 

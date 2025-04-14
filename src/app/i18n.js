@@ -1117,9 +1117,15 @@ export const forceReloadTranslations = async (lang) => {
     try {
       await i18n.reloadResources();
       console.log("Translations reloaded");
+      return true;
     } catch (error) {
       console.error("Error reloading translations:", error);
+      // Return true even on error to prevent loading state from getting stuck
+      return true;
     }
+  } else {
+    console.log("i18n not initialized yet, skipping reload");
+    return true;
   }
 };
 
