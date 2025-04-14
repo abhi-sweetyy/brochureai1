@@ -50,10 +50,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-gray-600 text-sm max-w-xs">
-              {t(
-                "footer.companyDesc",
-                "AI-powered brochure generation platform for real estate professionals.",
-              )}
+              AI-powered brochure generation platform for real estate professionals.
             </p>
             <div className="flex mt-4 space-x-4">
               {/* Facebook Icon */}
@@ -112,7 +109,7 @@ export default function Footer() {
           {/* Product Links */}
           <div className="md:col-span-1">
             <h3 className="font-semibold text-gray-800 mb-4">
-              {t("footer.product", "Product")}
+              Product
             </h3>
             <ul className="space-y-2">
               <li>
@@ -120,7 +117,7 @@ export default function Footer() {
                   href="/features"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.features", "Features")}
+                  Features
                 </Link>
               </li>
               <li>
@@ -128,7 +125,7 @@ export default function Footer() {
                   href="/pricing"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.pricing", "Pricing")}
+                  Pricing
                 </Link>
               </li>
               <li>
@@ -136,7 +133,7 @@ export default function Footer() {
                   href="/how-it-works"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.howItWorks", "How it Works")}
+                  How it Works
                 </Link>
               </li>
             </ul>
@@ -145,7 +142,7 @@ export default function Footer() {
           {/* Company Links */}
           <div className="md:col-span-1">
             <h3 className="font-semibold text-gray-800 mb-4">
-              {t("footer.company", "Company")}
+              Company
             </h3>
             <ul className="space-y-2">
               <li>
@@ -153,7 +150,7 @@ export default function Footer() {
                   href="/about"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.about", "About")}
+                  About
                 </Link>
               </li>
               <li>
@@ -161,7 +158,7 @@ export default function Footer() {
                   href="/contact"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.contact", "Contact")}
+                  Contact
                 </Link>
               </li>
               <li>
@@ -169,7 +166,7 @@ export default function Footer() {
                   href="/faq"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.faq", "FAQ")}
+                  FAQ
                 </Link>
               </li>
             </ul>
@@ -178,7 +175,7 @@ export default function Footer() {
           {/* Legal Links */}
           <div className="md:col-span-1">
             <h3 className="font-semibold text-gray-800 mb-4">
-              {t("footer.legal", "Legal")}
+              Legal
             </h3>
             <ul className="space-y-2">
               <li>
@@ -186,7 +183,7 @@ export default function Footer() {
                   href="/privacy-policy"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.privacyPolicy", "Privacy Policy")}
+                  Privacy Policy
                 </Link>
               </li>
               <li>
@@ -194,7 +191,7 @@ export default function Footer() {
                   href="/terms-of-service"
                   className="text-gray-600 hover:text-[#5169FE] transition-colors text-sm"
                 >
-                  {t("footer.termsOfService", "Terms of Service")}
+                  Terms of Service
                 </Link>
               </li>
             </ul>

@@ -95,6 +95,11 @@ const initI18n = async () => {
           "benefits.professional.description":
             "Impress clients with high-quality materials",
 
+          // Testimonial Section
+          "testimonial.quote": "ExposeFlow is built for efficiency. It can easily handle property details, photos, texts, and so much more. It's just brilliant. I love using it, and our team is amazed by the level of professionalism in our brochures.",
+          "testimonial.name": "John Smith",
+          "testimonial.position": "Real Estate Agent",
+
           // FAQ Section
           "faq.title": "FAQ",
           "faq.items.pricing.question": "How much does ExposeFlow cost?",
@@ -126,6 +131,18 @@ const initI18n = async () => {
           "footer.supportHours": "Mo-Fr / 9:00 AM - 5:00 PM",
           "footer.helpCenter": "Help Center",
           "footer.copyright": "© {{year}} ExposeFlow",
+          "footer.product": "Product",
+          "footer.features": "Features",
+          "footer.pricing": "Pricing",
+          "footer.howItWorks": "How it Works",
+          "footer.company": "Company",
+          "footer.about": "About",
+          "footer.contact": "Contact",
+          "footer.faq": "FAQ",
+          "footer.legal": "Legal",
+          "footer.privacyPolicy": "Privacy Policy",
+          "footer.termsOfService": "Terms of Service",
+          "footer.companyDesc": "AI-powered brochure generation platform for real estate professionals.",
 
           // CTA Section
           "cta.title": "Ready to Transform Your Real Estate Marketing?",
@@ -137,6 +154,9 @@ const initI18n = async () => {
             "Sign up in 60 seconds and create your first brochure for free.",
           "cta.getStartedFree": "Get Started — It's Free",
           "cta.noCredit": "No credit card required",
+          "cta.bookDemo": "Book a Demo",
+          "cta.bookDemoDescription": "Schedule a 30-minute appointment with our team.",
+          "cta.scheduleButton": "Choose a Time",
 
           // Dashboard Section
           "dashboard.title": "Dashboard",
@@ -591,6 +611,11 @@ const initI18n = async () => {
           "benefits.professional.description":
             "Beeindrucken Sie Kunden mit hochwertigen Materialien",
 
+          // Testimonial Section
+          "testimonial.quote": "ExposeFlow ist auf Effizienz ausgelegt. Es kann problemlos Immobiliendetails, Fotos, Texte und vieles mehr verarbeiten. Es ist einfach brillant. Ich benutze es gerne, und unser Team ist begeistert vom professionellen Niveau unserer Broschüren.",
+          "testimonial.name": "Franz Sorger",
+          "testimonial.position": "Makler für Gastronomie-Immobilien",
+
           // FAQ Section
           "faq.title": "FAQ",
           "faq.items.pricing.question": "Wie viel kostet ExposeFlow?",
@@ -664,6 +689,9 @@ const initI18n = async () => {
             "Melden Sie sich in 60 Sekunden an und erstellen Sie Ihre erste Broschüre kostenlos.",
           "cta.getStartedFree": "Jetzt starten — Es ist kostenlos",
           "cta.noCredit": "Keine Kreditkarte erforderlich",
+          "cta.bookDemo": "Demo vereinbaren",
+          "cta.bookDemoDescription": "Buchen Sie einen 30-minütigen Termin mit unserem Team.",
+          "cta.scheduleButton": "Termin aussuchen",
 
           // Dashboard Section
           "dashboard.title": "Dashboard",

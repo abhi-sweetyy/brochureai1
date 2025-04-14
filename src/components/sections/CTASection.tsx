@@ -51,15 +51,12 @@ export default function CTASection() {
                 }`}
               >
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-4 sm:mb-6">
-                  {t(
-                    "cta.title",
-                    "Erfahren Sie, wie ExposeFlow Ihre Exposé-Erstellung optimiert",
-                  )}
+                  {t("cta.title", "Ready to Transform Your Real Estate Marketing?")}
                 </h2>
                 <p className="text-lg text-gray-700 mb-6">
                   {t(
                     "cta.description",
-                    "Erleben Sie in einer persönlichen Demo, wie unser KI-gestützter Broschürenersteller Ihren Workflow revolutionieren kann. Sparen Sie wertvolle Zeit und erstellen Sie hochwertige Exposés.",
+                    "Experience how our AI-powered brochure creator can revolutionize your workflow. Save valuable time and create high-quality exposés."
                   )}
                 </p>
               </div>
@@ -74,18 +71,18 @@ export default function CTASection() {
             >
               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">
-                  {t("cta.bookDemo", "Demo vereinbaren")}
+                  {t("cta.bookDemo", "Book a Demo")}
                 </h3>
                 <p className="text-gray-600 mb-6">
                   {t(
                     "cta.bookDemoDescription",
-                    "Buchen Sie einen 30-minütigen Termin mit unserem Team.",
+                    "Schedule a 30-minute appointment with our team."
                   )}
                 </p>
 
                 <Link href="/demo-buchen">
                   <button className="w-full bg-[#5169FE] hover:bg-[#4058e0] text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-blue-200 border border-[#5169FE] hover:scale-[1.03]">
-                    {t("cta.scheduleButton", "Termin aussuchen")}
+                    {t("cta.scheduleButton", "Choose a Time")}
                   </button>
                 </Link>
               </div>

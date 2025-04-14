@@ -55,19 +55,19 @@ export default function Testimonial() {
                 "
                 {t(
                   "testimonial.quote",
-                  "ExposeFlow is built for efficiency. It can easily handle property details, photos, texts, and so much more. It's just brilliant. I love using it, and our team is amazed by the level of professionalism in our brochures.",
+                  "ExposeFlow is built for efficiency. It can easily handle property details, photos, texts, and so much more. It's just brilliant. I love using it, and our team is amazed by the level of professionalism in our brochures."
                 )}
                 "
               </p>
 
               <div>
                 <h4 className="text-[#5169FE] font-semibold text-lg">
-                  {t("testimonial.name", "Franz Sorger")}
+                  {t("testimonial.name", "John Smith")}
                 </h4>
                 <p className="text-gray-600">
                   {t(
                     "testimonial.position",
-                    "Makler für Gastronomie-Immobilien",
+                    "Real Estate Agent"
                   )}
                 </p>
               </div>
