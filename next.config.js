@@ -4,10 +4,7 @@ const nextConfig = {
     config.resolve.alias.canvas = false;
     return config;
   },
-  // Remove experimental.serverActions as it's now enabled by default
-  experimental: {
-    serverComponentsExternalPackages: ['googleapis'],
-  },
+  serverExternalPackages: ['googleapis'],
 }
 
 module.exports = nextConfig
