@@ -25,7 +25,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 				<link rel="icon" href="/favicon.png" />
 				<link rel="shortcut icon" href="/favicon.png" />
 				<link rel="apple-touch-icon" href="/favicon.png" />
-				<style>{`
+				<style type="text/css" dangerouslySetInnerHTML={{ __html: `
 					html, body {
 						overflow-x-hidden !important;
 						max-width: 100vw;
@@ -34,7 +34,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 						padding: 0;
 						border: none !important;
 					}
-				`}</style>
+				`}} />
 				<Script src="/german-slides-embed.js" strategy="beforeInteractive" />
 			</head>
 			<body
