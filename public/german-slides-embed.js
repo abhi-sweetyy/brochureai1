@@ -1,6 +1,6 @@
 // Script to enforce language settings in embedded Google Slides
 (function() {
-  // Function to get the current language from the DOM or localStorage
+  // Function to get the current language from the DOM
   function getCurrentLanguage() {
     // Try to detect the language from the UI
     const langButton = document.querySelector('button:has(.flag-de)') || 
@@ -16,14 +16,14 @@
       return 'de';
     }
     
-    // Check localStorage as fallback
-    try {
-      const i18nextLang = localStorage.getItem('i18nextLng');
-      if (i18nextLang && i18nextLang.startsWith('de')) {
-        return 'de';
-      }
-    } catch (e) {
-      console.error("Failed to access localStorage:", e);
+    // Check URL path for language indicator
+    if (window.location.pathname.includes('/de/')) {
+      return 'de';
+    }
+    
+    // Check HTML lang attribute
+    if (document.documentElement.lang === 'de') {
+      return 'de';
     }
     
     // Default to English
@@ -122,10 +122,10 @@
     });
   }
   
-  // Also listen for storage events to detect language changes in localStorage
-  window.addEventListener('storage', function(e) {
-    if (e.key === 'i18nextLng') {
-      console.log('Language changed in localStorage, updating iframes');
+  // Listen for language changes via custom event
+  window.addEventListener('languageChanged', function(e) {
+    if (e.detail && e.detail.language) {
+      console.log('Language changed via custom event, updating iframes');
       enforceLanguageOnIframes();
     }
   });

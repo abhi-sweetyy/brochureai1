@@ -4,18 +4,12 @@ import { initReactI18next } from "react-i18next";
 // Create i18n instance
 const i18n = createInstance();
 
-// Log when language changes for debugging
-i18n.on("languageChanged", (lng) => {
-  console.log(`Language changed to: ${lng}`);
-});
-
 // Initialize i18n with async detection
 const initI18n = async () => {
-  console.log("Initializing i18n...");
   await i18n.use(initReactI18next).init({
     lng: "en", // default language
     fallbackLng: "en",
-    debug: process.env.NODE_ENV === "development",
+    debug: false, // Disable debug mode
     interpolation: {
       escapeValue: false, // react already safes from xss
     },
@@ -1106,25 +1100,19 @@ const initI18n = async () => {
     },
   });
 
-  console.log("i18n initialized with language:", i18n.language);
   return i18n;
 };
 
 // Helper function to force reload all translations
 export const forceReloadTranslations = async (lang) => {
-  console.log("Force reloading translations for language:", lang);
   if (i18n.isInitialized) {
     try {
       await i18n.reloadResources();
-      console.log("Translations reloaded");
       return true;
     } catch (error) {
-      console.error("Error reloading translations:", error);
-      // Return true even on error to prevent loading state from getting stuck
       return true;
     }
   } else {
-    console.log("i18n not initialized yet, skipping reload");
     return true;
   }
 };

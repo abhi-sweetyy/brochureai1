@@ -6,7 +6,7 @@ export default function ClientScripts() {
   return (
     <Script
       src="/german-slides-embed.js"
-      strategy="afterInteractive"
+      strategy="beforeInteractive"
       id="german-slides-script"
     />
   );

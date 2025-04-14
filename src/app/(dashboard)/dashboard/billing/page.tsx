@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next';
 import i18n, { forceReloadTranslations } from '@/app/i18n';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 // Credit package options with competitive pricing
 const CREDIT_PACKAGES = [
@@ -26,14 +25,20 @@ export default function BillingPage() {
   const supabase = createClientComponentClient();
   const [userCredits, setUserCredits] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const { t } = useTranslation();
   const [i18nInitialized, setI18nInitialized] = useState(false);
+  const { t } = useTranslation();
 
   // Force reload translations when component mounts
   useEffect(() => {
     const loadTranslations = async () => {
-      if (i18n.language) {
-        await forceReloadTranslations(i18n.language);
+      try {
+        if (i18n.language) {
+          await forceReloadTranslations(i18n.language);
+          setI18nInitialized(true);
+        }
+      } catch (error) {
+        console.error("Error loading translations:", error);
+        // Set initialized even on error to prevent infinite loading
         setI18nInitialized(true);
       }
     };
@@ -137,12 +142,13 @@ export default function BillingPage() {
     }
   };
 
-  if (isLoading) {
+  // Show loading state only when session is loading or i18n is not initialized
+  if (isLoading || !i18nInitialized) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center">
           <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-800">{t("billing.loading")}</p>
+          <p className="text-gray-800">Loading...</p>
         </div>
       </div>
     );
