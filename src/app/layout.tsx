@@ -5,7 +5,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import SupabaseProvider from "@/providers/SupabaseProvider";
 import UserProvider from "@/providers/UserProvider";
 import { Providers } from "./providers";
-import Script from "next/script";
+import ClientScripts from "@/components/ClientScripts";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -25,7 +25,6 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 				<link rel="icon" href="/favicon.png" />
 				<link rel="shortcut icon" href="/favicon.png" />
 				<link rel="apple-touch-icon" href="/favicon.png" />
-				<Script src="/german-slides-embed.js" strategy="beforeInteractive" />
 			</head>
 			<body
 				className={`${font.className} overflow-x-hidden max-w-[100vw] w-full m-0 p-0 border-0`}
@@ -39,6 +38,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 					<SupabaseProvider>
 						<UserProvider>
 							<Providers>
+								<ClientScripts />
 								<div className="w-full overflow-x-hidden">{children}</div>
 							</Providers>
 						</UserProvider>
