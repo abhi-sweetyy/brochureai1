@@ -296,7 +296,7 @@ export default function DocumentViewer({
           throw new Error(errorData.message || `Server error: ${response.status}`);
         }
         
-        const { data } = await response.json();
+        const data = await response.json();
         
         // Store the document ID for later use (e.g., downloading)
         setProcessedDocumentId(data.documentId);
@@ -439,7 +439,7 @@ export default function DocumentViewer({
         throw new Error(errorData.message || `Server error: ${response.status}`);
       }
       
-      const { data } = await response.json();
+      const data = await response.json();
       setProcessedDocumentId(data.documentId);
       
       // Use the URLs directly from the API response - these already have language parameters

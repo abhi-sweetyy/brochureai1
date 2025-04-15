@@ -82,7 +82,8 @@ export const processPropertyDescription = async (description: string): Promise<{
 11. descriptionextralarge - A detailed multi-paragraph description of the property
 12. address_brokerfirm - Address of the broker firm
 
-Output ONLY a JSON object with these 12 keys. If information is not found in the text, use empty strings.`
+Output ONLY a JSON object with these 12 keys. If information is not found in the text, use empty strings.
+Make sure all JSON strings are properly escaped with no unterminated quotes.`
           },
           {
             role: 'user',
@@ -117,10 +118,38 @@ Output ONLY a JSON object with these 12 keys. If information is not found in the
         return { placeholders: {} };
       }
       
-      parsedContent = JSON.parse(content.trim());
-      console.log("Successfully parsed AI response");
+      // Attempt to fix and sanitize the JSON before parsing
+      let sanitizedContent = content.trim();
+      try {
+        parsedContent = JSON.parse(sanitizedContent);
+        console.log("Successfully parsed AI response");
+      } catch (initialParseError) {
+        console.warn("Initial JSON parse failed, attempting to sanitize response:", initialParseError);
+        
+        // Fallback approach: extract valid JSON data manually
+        const placeholders: Partial<PropertyPlaceholders> = {};
+        
+        // Regex to extract field values - more robust than full JSON parsing
+        const fields = [
+          "phone_number", "email_address", "website_name", "title", 
+          "address", "shortdescription", "price", "date_available", 
+          "name_brokerfirm", "descriptionlarge", "descriptionextralarge", 
+          "address_brokerfirm"
+        ];
+        
+        fields.forEach(field => {
+          const regex = new RegExp(`"${field}"\\s*:\\s*"([^"]*)"`, 'i');
+          const match = sanitizedContent.match(regex);
+          if (match && match[1]) {
+            placeholders[field as keyof PropertyPlaceholders] = match[1];
+          }
+        });
+        
+        console.log("Extracted fields using regex fallback");
+        return { placeholders };
+      }
     } catch (parseError) {
-      console.error("Error parsing AI response:", parseError);
+      console.error("Error in JSON handling:", parseError);
       return { placeholders: {} };
     }
     
