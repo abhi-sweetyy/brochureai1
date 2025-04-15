@@ -90,9 +90,10 @@ const initI18n = async () => {
             "Impress clients with high-quality materials",
 
           // Testimonial Section
-          "testimonial.quote": "ExposeFlow is built for efficiency. It can easily handle property details, photos, texts, and so much more. It's just brilliant. I love using it, and our team is amazed by the level of professionalism in our brochures.",
-          "testimonial.name": "John Smith",
-          "testimonial.position": "Real Estate Agent",
+          "testimonial.quote":
+            "ExposeFlow allows me to create compelling exposes much more easily - a real time saver for my real estate business! The ease of use and professional designs are particularly helpful. I also have the option of using my own previous designs as templates.",
+          "testimonial.name": "Franz Sorger",
+          "testimonial.position": "Real Estate Broker",
 
           // FAQ Section
           "faq.title": "FAQ",
@@ -136,7 +137,8 @@ const initI18n = async () => {
           "footer.legal": "Legal",
           "footer.privacyPolicy": "Privacy Policy",
           "footer.termsOfService": "Terms of Service",
-          "footer.companyDesc": "AI-powered brochure generation platform for real estate professionals.",
+          "footer.companyDesc":
+            "AI-powered brochure generation platform for real estate professionals.",
 
           // CTA Section
           "cta.title": "Ready to Transform Your Real Estate Marketing?",
@@ -149,7 +151,8 @@ const initI18n = async () => {
           "cta.getStartedFree": "Get Started — It's Free",
           "cta.noCredit": "No credit card required",
           "cta.bookDemo": "Book a Demo",
-          "cta.bookDemoDescription": "Schedule a 30-minute appointment with our team.",
+          "cta.bookDemoDescription":
+            "Schedule a 30-minute appointment with our team.",
           "cta.scheduleButton": "Choose a Time",
 
           // Dashboard Section
@@ -606,7 +609,8 @@ const initI18n = async () => {
             "Beeindrucken Sie Kunden mit hochwertigen Materialien",
 
           // Testimonial Section
-          "testimonial.quote": "ExposeFlow ist auf Effizienz ausgelegt. Es kann problemlos Immobiliendetails, Fotos, Texte und vieles mehr verarbeiten. Es ist einfach brillant. Ich benutze es gerne, und unser Team ist begeistert vom professionellen Niveau unserer Broschüren.",
+          "testimonial.quote":
+            "Mit ExposeFlow kann ich deutlich einfacher ansprechende Exposés erstellen – ein echter Zeitsparer für mein Maklergeschäft! Die einfache Handhabung und die professionellen Designs sind besonders hilfreich. Ich habe die Möglichkeit, meine eigenen vorherigen Designs als Vorlagen zu nutzen.",
           "testimonial.name": "Franz Sorger",
           "testimonial.position": "Makler für Gastronomie-Immobilien",
 
@@ -684,7 +688,8 @@ const initI18n = async () => {
           "cta.getStartedFree": "Jetzt starten — Es ist kostenlos",
           "cta.noCredit": "Keine Kreditkarte erforderlich",
           "cta.bookDemo": "Demo vereinbaren",
-          "cta.bookDemoDescription": "Buchen Sie einen 30-minütigen Termin mit unserem Team.",
+          "cta.bookDemoDescription":
+            "Buchen Sie einen 30-minütigen Termin mit unserem Team.",
           "cta.scheduleButton": "Termin aussuchen",
 
           // Dashboard Section
