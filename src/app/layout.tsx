@@ -26,6 +26,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 				<link rel="apple-touch-icon" href="/favicon.png" />
 			</head>
 			<body
+				suppressHydrationWarning={true}
 				className={`${font.className} overflow-x-hidden max-w-[100vw] w-full m-0 p-0 border-0`}
 			>
 				<ThemeProvider
