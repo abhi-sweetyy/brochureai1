@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { saveAs } from 'file-saver';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { toast } from 'react-hot-toast';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import type { Session } from '@supabase/supabase-js';
 
 interface DocumentViewerProps {
   placeholders: Record<string, string>;
@@ -34,8 +35,8 @@ export default function DocumentViewer({
   const [editUrl, setEditUrl] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const supabase = createClientComponentClient();
-  
+  const [session, setSession] = useState<Session | null>(null);
+
   // Updated Google Slides presentation ID for the template
   const templateId = "163ORTnlGT7GSowNSbYzS6pbgANpsLfTrmuzTMPd-Now";
 
@@ -563,7 +564,10 @@ export default function DocumentViewer({
 
   // Add this inside the DocumentViewer component
   const uploadImage = async (file: File) => {
-    const supabase = createClientComponentClient();
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${projectId}/${fileName}`;
@@ -865,6 +869,25 @@ export default function DocumentViewer({
       </div>
     );
   }
+
+  // Create client instance using createBrowserClient
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
+
+  // Fetch session
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      // If user logs out while viewing, maybe clear documentUrl or show message?
+      // if (!currentSession) setDocumentUrl(null);
+    });
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+       if (!session) setSession(initialSession);
+    });
+    return () => { authListener?.subscription.unsubscribe(); };
+  }, [supabase]);
 
   return (
     <div className="flex flex-col h-full">

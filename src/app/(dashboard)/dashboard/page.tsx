@@ -1,16 +1,14 @@
 "use client";
 
-import { useSessionContext } from "@supabase/auth-helpers-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@supabase/ssr";
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import Link from "next/link";
 import {
   BasicInfoStep,
   AmenitiesStep,
   ContactInfoStep,
-  ReviewStep,
   ImagesStep,
   TemplateStep,
   PagesSelectionStep
@@ -22,6 +20,7 @@ import { toast } from 'react-hot-toast';
 import { verifyApiConnection } from '@/utils/test-api';
 import ImageUploader from '@/components/ImageUploader';
 import { useTranslation } from 'react-i18next';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
 // Define the steps for the form
 const getFormSteps = (t: any) => [
@@ -31,7 +30,6 @@ const getFormSteps = (t: any) => [
   { title: t('formSteps.images.title'), description: t('formSteps.images.description') },
   { title: t('formSteps.amenities.title'), description: t('formSteps.amenities.description') },
   { title: t('formSteps.contactInfo.title'), description: t('formSteps.contactInfo.description') },
-  { title: t('formSteps.review.title'), description: t('formSteps.review.description') }
 ];
 
 interface Project {
@@ -85,7 +83,10 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const FORM_STEPS = getFormSteps(t);
   
-  const { session, isLoading } = useSessionContext();
+  // Initialize session state
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -95,7 +96,10 @@ const Dashboard = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
-  const supabase = createClientComponentClient();
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
   const [error, setError] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<ImagePlaceholders>({
     '{{logo}}': '',
@@ -194,12 +198,30 @@ const Dashboard = () => {
     websiteName: false
   });
 
-  // Protect the dashboard route
+  // Update session handling and redirection
   useEffect(() => {
-    if (!session && !isLoading) {
-      router.replace('/sign-in');
-    }
-  }, [session, isLoading, router]);
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      console.log("Auth State Change: ", event, currentSession);
+      setSession(currentSession);
+      setIsLoading(false); // Set loading to false once session status is known
+    });
+
+    // Initial check
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log("Initial Session Check: ", initialSession);
+      if (!session) { // Only set if session state is currently null
+        setSession(initialSession);
+      }
+      // Ensure loading is false eventually if initial check runs
+       if (isLoading) {
+         setIsLoading(false);
+       }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase, router]); // Keep router dependency for potential future use, but not for redirect
 
   // Check API connectivity on initial load
   useEffect(() => {
@@ -250,14 +272,14 @@ const Dashboard = () => {
     checkApiConnection();
   }, [t]);
 
-  // Fetch projects
-  const fetchProjects = async () => {
-    if (!session?.user?.id) return;
+  // Fetch projects - depends on session
+  const fetchProjects = async (currentSession: Session | null) => {
+    if (!currentSession?.user?.id) return;
     
     const { data, error } = await supabase
       .from('real_estate_projects')
       .select('*')
-      .eq('user_id', session.user.id)  // Filter by current user's ID
+      .eq('user_id', currentSession.user.id)  // Filter by current user's ID
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -270,7 +292,7 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch templates
+  // Fetch templates - does not depend on session
   const fetchTemplates = async () => {
     const { data, error } = await supabase
       .from('templates')
@@ -281,13 +303,13 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch credits
-  const fetchCredits = async () => {
-    if (session?.user) {
+  // Fetch credits - depends on session
+  const fetchCredits = async (currentSession: Session | null) => {
+    if (currentSession?.user) {
       const { data, error } = await supabase
         .from('profiles')
         .select('credits')
-        .eq('id', session.user.id)
+        .eq('id', currentSession.user.id)
         .single();
       
       if (data) {
@@ -298,8 +320,10 @@ const Dashboard = () => {
     }
   };
 
-  // Listen for credits updates
+  // Supabase channel listener - depends on session.id
   useEffect(() => {
+    if (!supabase || !session?.user?.id) return;
+
     const channel = supabase
       .channel('credits')
       .on(
@@ -308,7 +332,7 @@ const Dashboard = () => {
           event: '*',
           schema: 'public',
           table: 'profiles',
-          filter: `id=eq.${session?.user?.id}`,
+          filter: `id=eq.${session.user.id}`,
         },
         (payload: any) => {
           setCredits(payload.new.credits);
@@ -317,39 +341,44 @@ const Dashboard = () => {
       .subscribe();
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [session, supabase]);
 
-  // Handle successful payment
+  // Handle successful payment - depends on session
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && session) { // Check if session exists
       try {
         window.history.replaceState({}, '', '/dashboard');
-        fetchProjects();
+        fetchProjects(session);
         fetchTemplates();
-        fetchCredits();
+        fetchCredits(session);
       } catch (error) {
         console.error('Error handling successful payment:', error);
       }
     }
-  }, [sessionId]);
+  }, [sessionId, session, supabase]); // Add session and supabase dependencies
 
+  // Initial data fetching when session is confirmed
   useEffect(() => {
-    fetchProjects();
-    fetchTemplates();
-    fetchCredits();
-  }, [supabase, session]);
+    if (session?.user?.id) {
+        console.log("Session confirmed, fetching initial data...");
+        fetchProjects(session);
+        fetchTemplates();
+        fetchCredits(session);
+        ensureProfileExists(session);
+    }
+  }, [session, supabase]); // Depend on session
 
-  // Fetch user profile information and pre-fill form fields
+  // Fetch user profile - depends on session
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (session?.user?.id) {
+    const fetchUserProfile = async (currentSession: Session | null) => {
+      if (currentSession?.user?.id) {
         console.log("Fetching user profile for dashboard");
         const { data, error } = await supabase
           .from('user_profiles')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', currentSession.user.id)
           .single();
         
         if (data && data.is_onboarded) {
@@ -381,7 +410,9 @@ const Dashboard = () => {
       }
     };
 
-    fetchUserProfile();
+    if (session) {
+        fetchUserProfile(session);
+    }
   }, [session, supabase]);
 
   // Handle input changes
@@ -394,7 +425,10 @@ const Dashboard = () => {
   };
 
   // Handle form navigation
-  const goToNextStep = () => {
+  const goToNextStep = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log(`[goToNextStep] Current Step BEFORE validation/advance: ${currentStep}`);
     // Validate current step before proceeding
     if (currentStep === 0 && !selectedTemplate) {
       setError(t('error.selectTemplate'));
@@ -416,12 +450,17 @@ const Dashboard = () => {
     
     // Move to the next step
     if (currentStep < FORM_STEPS.length - 1) {
+      console.log(`[goToNextStep] Advancing from step ${currentStep} to ${currentStep + 1}`);
       setCurrentStep(currentStep + 1);
+    } else {
+      console.log(`[goToNextStep] Already on last step (${currentStep}).`);
     }
   };
 
   const goToPreviousStep = () => {
+    console.log(`[goToPreviousStep] Current Step BEFORE moving back: ${currentStep}`); // LOGGING
     if (currentStep > 0) {
+      console.log(`[goToPreviousStep] Moving back from step ${currentStep} to ${currentStep - 1}`); // LOGGING
       setCurrentStep(currentStep - 1);
     }
   };
@@ -532,6 +571,7 @@ const Dashboard = () => {
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log(`[handleSubmit] Form submitted. Current Step: ${currentStep}, Is Last Step: ${currentStep === FORM_STEPS.length - 1}`); // LOGGING
     e.preventDefault();
     
     // Look for any active image editors and don't proceed if found
@@ -541,38 +581,46 @@ const Dashboard = () => {
       return;
     }
     
-    // If we're not on the final review step, just navigate to the next step
+    // If we're not on the final step (now Contact Info), just navigate to the next step
     if (currentStep < FORM_STEPS.length - 1) {
-      goToNextStep();
+      console.warn(`[handleSubmit] WARNING: handleSubmit called but not on the last step (${currentStep}). This shouldn't happen with type="submit" only on the last step button.`);
+      // We might not want to automatically go next here if handleSubmit was triggered incorrectly.
+      // Let's just log the warning and return to prevent accidental submission.
+      // goToNextStep();
       return;
     }
     
     // Ensure user is logged in
     if (!session?.user?.id) {
       setError(t('error.loginRequired'));
+      console.log('[handleSubmit] User not logged in.');
       return;
     }
     
-    // Only proceed with project creation if we're on the final review step
+    // Only proceed with project creation if we're on the final step
     try {
       setError(null); // Clear any previous errors
       setUploadStage('uploading');
+      console.log('[handleSubmit] Set upload stage to uploading.');
       
-      // Validate required fields
-      if (!placeholders.title) {
+      // Validate required fields (adjust if ContactInfo step has specific required fields)
+      if (!placeholders.title) { // Keep title check or add contact info check
         setError(t('error.titleRequired'));
         setUploadStage('idle');
+        console.log('[handleSubmit] Validation failed: Title required.');
         return;
       }
       
       if (!selectedTemplate) {
         setError(t('error.selectTemplate'));
         setUploadStage('idle');
+        console.log('[handleSubmit] Validation failed: Template required.');
         return;
       }
+      console.log('[handleSubmit] Basic validation passed.');
       
       // Prepare images array from the image placeholders
-      const presentationImages = [];
+      const presentationImages: string[] = [];
       
       // Add logo first if it exists
       if (logoUrl) {
@@ -614,8 +662,10 @@ const Dashboard = () => {
       
       // Get user ID directly from session
       const userId = session.user.id;
+      console.log(`[handleSubmit] User ID: ${userId}`);
       
       // Create the project with all the placeholders and selected pages
+      console.log('[handleSubmit] Calling Supabase to insert project...');
       const { data: newProject, error: insertError } = await supabase
         .from('real_estate_projects')
         .insert({
@@ -638,25 +688,25 @@ const Dashboard = () => {
         .single();
       
       if (insertError) {
-        console.error('Error creating project:', insertError);
+        console.error('[handleSubmit] Error creating project:', insertError);
         setError(insertError.message);
         setUploadStage('error');
         return;
       }
       
-      console.log('Project created successfully:', newProject);
+      console.log('[handleSubmit] Project created successfully:', newProject);
       setUploadStage('complete');
       
       // Use requestAnimationFrame to ensure state updates are complete before navigation
       requestAnimationFrame(() => {
         if (newProject) {
-          // Use replace instead of push to prevent back navigation issues
+          console.log(`[handleSubmit] Navigating to /project/${newProject.id}`);
           router.replace(`/project/${newProject.id}`);
         }
       });
       
     } catch (error: any) {
-      console.error('Error in form submission:', error);
+      console.error('[handleSubmit] Error in form submission catch block:', error);
       setError(error.message || 'An unexpected error occurred');
       setUploadStage('error');
     }
@@ -675,14 +725,14 @@ const Dashboard = () => {
     }));
   };
 
-  // Check if user is onboarded
+  // Check onboarding status - depends on session
   useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      if (session?.user?.id) {
+    const checkOnboardingStatus = async (currentSession: Session | null) => {
+      if (currentSession?.user?.id) {
         const { data } = await supabase
           .from('user_profiles')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', currentSession.user.id)
           .single();
         
         if (data && data.is_onboarded) {
@@ -700,11 +750,13 @@ const Dashboard = () => {
         }
       }
     };
-    
-    checkOnboardingStatus();
+
+    if (session) {
+      checkOnboardingStatus(session);
+    }
   }, [session, supabase, router]);
 
-  // Add this function to handle onboarding form submission
+  // Handle onboarding submit - depends on session
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -787,15 +839,18 @@ const Dashboard = () => {
     }
   };
 
-  // Custom upload function for onboarding that uses the userinfo bucket
+  // Update uploadOnboardingImage - depends on session
   const uploadOnboardingImage = async (file: File): Promise<string> => {
+    if (!session?.user?.id) {
+      throw new Error("User not authenticated for image upload.");
+    }
     try {
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
       const fileName = `${timestamp}_${randomString}.${fileExt}`;
-      const filePath = `${session?.user?.id}/${fileName}`;
+      const filePath = `${session.user.id}/${fileName}`;
       
       // Upload to the userinfo bucket
       const { error: uploadError } = await supabase.storage
@@ -885,31 +940,19 @@ const Dashboard = () => {
             ]}
           />
         );
-      case 6:
-        return (
-          <ReviewStep
-            placeholders={placeholders}
-            uploadStage={uploadStage}
-            uploadedImages={uploadedImages}
-            logoUrl={logoUrl}
-            selectedTemplate={selectedTemplate || undefined}
-            handleInputChange={handleInputChange}
-            autoFilledFields={autoFilledFields}
-          />
-        );
       default:
         return null;
     }
   };
 
-  // Add this function to ensure the profile exists
-  const ensureProfileExists = async () => {
-    if (session?.user) {
+  // Ensure profile exists - depends on session
+  const ensureProfileExists = async (currentSession: Session | null) => {
+    if (currentSession?.user?.id) {
       // Check if profile exists
       const { data, error } = await supabase
         .from('profiles')
         .select('id')
-        .eq('id', session.user.id)
+        .eq('id', currentSession.user.id)
         .single();
       
       // If no profile exists, create one
@@ -918,7 +961,7 @@ const Dashboard = () => {
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
-            id: session.user.id,
+            id: currentSession.user.id,
             credits: 0 // Start with 0 credits
           });
         
@@ -929,14 +972,7 @@ const Dashboard = () => {
     }
   };
 
-  // Call this function when loading the dashboard
-  useEffect(() => {
-    if (session?.user) {
-      ensureProfileExists().then(() => {
-        fetchCredits();
-      });
-    }
-  }, [session]);
+  // No need for a separate useEffect for ensureProfileExists, merged into initial data fetching useEffect
 
   if (isLoading) {
     return (

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSessionContext } from "@supabase/auth-helpers-react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@supabase/ssr";
 import { toast } from 'react-hot-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import ImageUploader from '@/components/ImageUploader';
 import { useTranslation } from 'react-i18next';
 import i18n, { forceReloadTranslations } from '@/app/i18n';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
 interface AccountFormData {
   logo_url: string;
@@ -32,8 +32,12 @@ interface FormErrors {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { session, isLoading } = useSessionContext();
-  const supabase = createClientComponentClient();
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
   const [credits, setCredits] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExistingUser, setIsExistingUser] = useState(false);
@@ -70,22 +74,39 @@ export default function AccountPage() {
     loadTranslations();
   }, []);
 
-  // Protect the account page route
+  // Session handling and redirection
   useEffect(() => {
-    if (!session && !isLoading) {
-      router.replace('/sign-in');
-    }
-  }, [session, isLoading, router]);
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      console.log("Account Page Auth Change: ", event, currentSession);
+      setSession(currentSession);
+      setIsLoading(false); // Set loading false once session status known
+    });
 
-  // Fetch user profile data
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log("Account Page Initial Session: ", initialSession);
+      if (!session) { // Set initial session only if not already set by listener
+         setSession(initialSession);
+      }
+      // Ensure loading is false eventually
+       if (isLoading) {
+         setIsLoading(false);
+       }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase, router]); // Keep router dependency
+
+  // Fetch user profile data - depends on session
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (session?.user?.id) {
-        console.log("Fetching profile for user:", session.user.id);
+    const fetchUserProfile = async (currentSession: Session | null) => {
+      if (currentSession?.user?.id) {
+        console.log("Fetching profile for user:", currentSession.user.id);
         const { data, error } = await supabase
           .from('user_profiles')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', currentSession.user.id)
           .single();
         
         console.log("Profile data:", data);
@@ -104,17 +125,24 @@ export default function AccountPage() {
             address: data.address || '',
             fax_number: data.fax_number || ''
           });
-        } else if (session?.user?.email) {
+        } else if (currentSession?.user?.email) {
           // Pre-fill email for new users
           setFormData(prev => ({
             ...prev,
-            email_address: session.user.email || ''
+            email_address: currentSession.user.email || ''
           }));
         }
       }
     };
 
-    fetchUserProfile();
+    // Fetch profile only when session is confirmed
+    if (session) {
+      fetchUserProfile(session);
+    } else if (session === null) {
+       // Handle logged out state if necessary, maybe clear form data?
+       setIsLoading(false); // If logged out, loading is finished
+    }
+
   }, [session, supabase]);
 
   // Handle image upload functions
@@ -132,15 +160,18 @@ export default function AccountPage() {
     }
   };
 
-  // Custom upload function for account page that uses the userinfo bucket
+  // Custom upload function - depends on session
   const uploadAccountImage = async (file: File): Promise<string> => {
+    if (!session?.user?.id) {
+        throw new Error("User must be logged in to upload images.");
+    }
     try {
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
       const fileName = `${timestamp}_${randomString}.${fileExt}`;
-      const filePath = `${session?.user?.id}/${fileName}`;
+      const filePath = `${session.user.id}/${fileName}`;
       
       // Upload to the userinfo bucket
       const { error: uploadError } = await supabase.storage
@@ -174,7 +205,7 @@ export default function AccountPage() {
     setFormErrors(prev => ({ ...prev, [name]: false }));
   };
 
-  // Handle form submission
+  // Handle form submission - depends on session
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -195,6 +226,13 @@ export default function AccountPage() {
       return;
     }
     
+    if (!session?.user?.id) {
+        toast.error("Session expired. Please log in again.");
+        setIsSubmitting(false);
+        router.replace('/sign-in');
+        return;
+    }
+    
     // Format website URL if needed (add https:// if not present)
     let websiteUrl = formData.website_name;
     if (websiteUrl && !websiteUrl.match(/^https?:\/\//)) {
@@ -210,7 +248,7 @@ export default function AccountPage() {
       const { error } = await supabase
         .from('user_profiles')
         .upsert({
-          user_id: session?.user?.id,
+          user_id: session.user.id,
           logo_url: formData.logo_url,
           broker_photo_url: formData.broker_photo_url,
           phone_number: formData.phone_number,

@@ -1,13 +1,14 @@
 'use client';
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useSessionContext } from '@supabase/auth-helpers-react';
+import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import i18n, { forceReloadTranslations } from '@/app/i18n';
+import type { Session } from '@supabase/supabase-js';
+import { loadStripe } from '@stripe/stripe-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,17 @@ const CREDIT_PACKAGES = [
   { id: 'enterprise', name: 'Enterprise', credits: 100, price: 49.99, popular: false }
 ];
 
+// Initialize Stripe outside the component
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
 export default function BillingPage() {
-  const { session, isLoading } = useSessionContext();
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
   const [userCredits, setUserCredits] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [i18nInitialized, setI18nInitialized] = useState(false);
@@ -46,47 +54,70 @@ export default function BillingPage() {
     loadTranslations();
   }, []);
 
-  // Fetch user credits
+  // Session handling and redirection
   useEffect(() => {
-    if (!session && !isLoading) {
-      router.replace('/sign-in');
-      return;
-    }
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      setIsLoadingAuth(false);
+    });
 
-    async function fetchUserData() {
-      if (!session?.user) return;
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log("Billing Page Initial Session: ", initialSession);
+      if (!session) { // Set initial session only if not already set
+        setSession(initialSession);
+      }
+      // Wait for listener to set loading false
+      if (isLoadingAuth) {
+          setIsLoadingAuth(false);
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase, router]); // Keep router dependency
+
+  // Fetch user credits - depends on session
+  useEffect(() => {
+    // Moved redirection logic to session handling useEffect
+
+    async function fetchUserData(currentSession: Session | null) { // Accept session as arg
+      if (!currentSession?.user?.id) {
+        setUserCredits(null); // Clear credits if no user
+        return;
+      }
 
       try {
-        // Always use profiles table for credits
-        const { data, error } = await supabase
+        const { data, error } = await supabase // Use state client
           .from('profiles')
           .select('credits')
-          .eq('id', session.user.id)
+          .eq('id', currentSession.user.id) // Use arg session
           .single();
-        
+
         if (error) {
-          // If profile doesn't exist yet, create it with 0 credits
           if (error.code === 'PGRST116') {
-            await supabase
+            await supabase // Use state client
               .from('profiles')
-              .insert({ id: session.user.id, credits: 0 });
-            
+              .insert({ id: currentSession.user.id, credits: 0 }); // Use arg session
             setUserCredits(0);
           } else {
             console.error("Error fetching user credits:", error);
-            setUserCredits(0);
+            setUserCredits(0); // Default to 0 on other errors
           }
         } else {
-          setUserCredits(data?.credits || 0);
+          setUserCredits(data?.credits ?? 0); // Use nullish coalescing
         }
       } catch (error) {
         console.error("Error fetching user credits:", error);
-        setUserCredits(0);
+        setUserCredits(0); // Default to 0 on catch
       }
     }
 
-    fetchUserData();
-  }, [session, isLoading, router, supabase]);
+    // Fetch only when session status is known (not undefined)
+    if (session !== undefined) {
+        fetchUserData(session);
+    }
+  }, [session, supabase]); // Depend on session and supabase
 
   const handlePurchaseCredits = async (packageId: string) => {
     if (!session?.user?.id) {
@@ -95,55 +126,58 @@ export default function BillingPage() {
     }
 
     setIsProcessing(packageId);
-    
+
     try {
-      // Find the selected package
+      // Find the selected package - needed for UI feedback potentially
       const selectedPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId);
       if (!selectedPackage) {
         throw new Error(t("billing.invalidPackage"));
       }
       
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Check if profile exists first
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('profiles')
-        .select('credits')
-        .eq('id', session.user.id)
-        .single();
-      
-      // Calculate new credit amount
-      const currentCredits = existingProfile?.credits || 0;
-      const newCreditAmount = currentCredits + selectedPackage.credits;
-      
-      // Insert or update user credits in the profiles table
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: session.user.id,
-          credits: newCreditAmount
-        });
-      
-      if (error) {
-        console.error("Database update error:", error);
-        throw error;
+      // 1. Call the backend to create a checkout session
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ packageId: packageId, userId: session.user.id }),
+      });
+
+      const checkoutSession = await response.json();
+
+      if (!response.ok) {
+        throw new Error(checkoutSession.error || 'Failed to create checkout session');
       }
-      
-      // Update local state
-      setUserCredits(newCreditAmount);
-      
-      toast.success(t("billing.purchaseSuccess", { credits: selectedPackage.credits }));
-    } catch (error) {
+
+      // 2. Redirect to Stripe Checkout
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripe.js failed to load.');
+      }
+
+      const { error } = await stripe.redirectToCheckout({
+        sessionId: checkoutSession.sessionId,
+      });
+
+      if (error) {
+        console.error("Stripe redirect error:", error);
+        throw error; // Throw error to be caught below
+      }
+
+      // Note: DB update is now handled by the webhook
+      // The user will be redirected away, so local state update isn't strictly needed here
+      // unless you show a success message on the redirect back.
+
+    } catch (error: any) {
       console.error("Error purchasing credits:", error);
-      toast.error(t("billing.purchaseFailed"));
-    } finally {
-      setIsProcessing(null);
-    }
+      toast.error(error.message || t("billing.purchaseFailed"));
+      setIsProcessing(null); // Reset button on error
+    } 
+    // No finally block needed as redirect happens on success
   };
 
-  // Show loading state only when session is loading or i18n is not initialized
-  if (isLoading || !i18nInitialized) {
+  // Updated loading check
+  if (isLoadingAuth || !i18nInitialized) { // Check auth loading and i18n
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center">
@@ -154,6 +188,7 @@ export default function BillingPage() {
     );
   }
 
+  // If loading is done but there's no session, render null (or redirect handled by useEffect)
   if (!session) return null;
 
   return (

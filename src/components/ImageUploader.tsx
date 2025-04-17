@@ -2,8 +2,9 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import Konva from 'konva';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
 interface ImageUploaderProps {
   // Props for project page
@@ -50,7 +51,11 @@ export default function ImageUploader({
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(uploading);
   const [isDragging, setIsDragging] = useState(false);
-  const supabase = createClientComponentClient();
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
+  const [session, setSession] = useState<Session | null>(null);
   
   // Use either images or existingImages based on which is provided
   const displayImages = images.length > 0 ? images : existingImages;
@@ -101,6 +106,23 @@ export default function ImageUploader({
     // Cleanup
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Fetch session
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+    });
+
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!session) { // Set initial session only if not already set by listener
+         setSession(initialSession);
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   // Function to delete an image from Supabase storage
   const deleteImageFromStorage = async (url: string): Promise<boolean> => {
@@ -247,26 +269,23 @@ export default function ImageUploader({
   const uploadFile = async (file: File, oldUrl?: string, isEdited: boolean = false): Promise<string> => {
     console.log('📤 Uploading file to Supabase:', file.name);
     
+    // Check for session before proceeding
+    if (!session?.user?.id) {
+      console.error('❌ User not authenticated for upload.');
+      throw new Error('User not authenticated');
+    }
+
     // Create a truly unique filename
     const fileExt = file.name.split('.').pop();
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const fileName = `${timestamp}_${randomString}.${fileExt}`;
     
-    // Determine the correct folder based on whether this is an edited image
-    let folder = 'uploads';
+    // Use user ID in the path
+    const userId = session.user.id;
+    const filePath = `${userId}/${fileName}`;
     
-    // Check if the old URL had a templateId folder
-    if (oldUrl && isEdited) {
-      const templateMatch = oldUrl.match(/\/([^\/]+?)\/[^\/]+$/);
-      if (templateMatch && templateMatch[1] && templateMatch[1] !== 'uploads') {
-        folder = templateMatch[1];
-        console.log('📂 Will save edited image in templateId folder:', folder);
-      }
-    }
-    
-    const filePath = `${folder}/${fileName}`;
-    console.log('📁 File will be saved at:', filePath);
+    console.log(`📝 Determined file path: ${filePath}`);
     
     try {
       // Upload the new file
@@ -566,7 +585,7 @@ export default function ImageUploader({
           const imgAspectRatio = img.width / img.height;
           const containerAspectRatio = containerWidth / containerHeight;
           
-          let imageWidth, imageHeight;
+          let imageWidth: number, imageHeight: number;
           let offsetX = 0, offsetY = 0;
           
           // Determine if we need to fit by width or height

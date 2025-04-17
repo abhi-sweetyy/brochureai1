@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useSessionContext } from '@supabase/auth-helpers-react';
+import { createBrowserClient } from "@supabase/ssr";
 import Link from 'next/link';
 import DocumentViewer from '@/components/DocumentViewer';
 import ImageUploader from '@/components/ImageUploader';
@@ -12,6 +11,7 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import i18n, { forceReloadTranslations } from '@/app/i18n';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
 // Define only the fields we need for our placeholders
 interface Project {
@@ -42,8 +42,11 @@ interface Project {
 export default function ProjectEditor() {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClientComponentClient();
-  const { session } = useSessionContext();
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
+  const [session, setSession] = useState<Session | null>(null);
   const { t } = useTranslation();
   
   const [project, setProject] = useState<Project | null>(null);
@@ -83,10 +86,10 @@ export default function ProjectEditor() {
 
   // Update loading state based on both translation and project loading
   useEffect(() => {
-    if (i18nInitialized && projectLoaded) {
+    if (i18nInitialized && projectLoaded && session !== undefined) {
       setIsLoading(false);
     }
-  }, [i18nInitialized, projectLoaded]);
+  }, [i18nInitialized, projectLoaded, session]);
 
   // Add a timeout to ensure loading state is eventually turned off
   useEffect(() => {
@@ -100,12 +103,40 @@ export default function ProjectEditor() {
     return () => clearTimeout(timeoutId);
   }, [isLoading]);
 
+  // Session handling
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      console.log("Project Editor Auth Change: ", event, currentSession);
+      setSession(currentSession);
+      // Don't set isLoading false here directly, let the combined useEffect handle it
+    });
+
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+       console.log("Project Editor Initial Session: ", initialSession);
+      if (session === undefined) { // Set initial session only if not already set
+         setSession(initialSession);
+      }
+        // Ensure loading is false eventually
+        if (isLoading) {
+            setIsLoading(false);
+        }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase, router]); // Keep router dependency
+
   // Fetch project data with security checks
   useEffect(() => {
-    const fetchProject = async () => {
+    const fetchProject = async (currentSession: Session | null) => {
+      console.log("Fetching project with session:", currentSession);
+      setProjectLoaded(false); // Reset loading state for project fetch
       try {
-        if (!session?.user?.id) {
-          router.replace('/sign-in');
+        if (!currentSession?.user?.id) {
+          // Already handled by session listener, but good practice
+          console.log("fetchProject: No user ID, skipping fetch.");
+          setProjectLoaded(true); // Mark as loaded (with error/no data)
           return;
         }
 
@@ -129,7 +160,7 @@ export default function ProjectEditor() {
         }
 
         // Security check: Make sure the user owns this project
-        if (projectData.user_id !== session.user.id) {
+        if (projectData.user_id !== currentSession.user.id) {
           setError('You do not have permission to view this project');
           setProjectLoaded(true);
           return;
@@ -193,10 +224,13 @@ export default function ProjectEditor() {
       }
     };
 
-    if (session) {
-      fetchProject();
+    // Fetch only when session is confirmed and params.id is available
+    if (session && params.id) {
+      fetchProject(session);
+    } else if (session === null) { // Handle case where session becomes null (logged out)
+       setProjectLoaded(true); // Considered loaded, but no data
     }
-  }, [params.id, supabase, session, router]);
+  }, [params.id, supabase, session]); // Depend on session
 
   // Handle input change - updating both projectDetails and placeholders
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -260,6 +294,7 @@ export default function ProjectEditor() {
   // Handle saving the focused project details
   const handleSave = async () => {
     if (!session?.user?.id || !project) {
+      console.log("Save aborted: No session or project data");
       router.replace('/sign-in');
       return;
     }
@@ -349,6 +384,7 @@ export default function ProjectEditor() {
 
   // Handle image upload
   const handleImagesUploaded = async (urls: string[]) => {
+    if (!params.id) return; // Ensure project id is available
     try {
       setUploading(true);
       
@@ -383,6 +419,7 @@ export default function ProjectEditor() {
 
   // Handle image removal
   const handleImageRemove = async (index: number) => {
+    if (!params.id) return; // Ensure project id is available
     try {
       setUploading(true);
       
@@ -437,12 +474,12 @@ export default function ProjectEditor() {
   };
 
   // Fetch user credits
-  const fetchCredits = async () => {
-    if (session?.user) {
+  const fetchCredits = async (currentSession: Session | null) => {
+    if (currentSession?.user?.id) {
       const { data, error } = await supabase
         .from('users')
         .select('credits')
-        .eq('id', session.user.id)
+        .eq('id', currentSession.user.id)
         .single();
       
       if (data) {
@@ -452,10 +489,10 @@ export default function ProjectEditor() {
   };
 
   useEffect(() => {
-    if (session?.user) {
-      fetchCredits();
+    if (session) {
+      fetchCredits(session);
     }
-  }, [session]);
+  }, [session, supabase]);
 
   // Handle document generation
   const handleGenerateDocument = () => {
@@ -823,19 +860,19 @@ export default function ProjectEditor() {
       />
       
       <div className="container mx-auto px-4 py-12">
-        {error ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin"></div>
+          </div>
+        ) : error ? (
           <div className="bg-red-100 border border-red-300 text-red-600 p-6 rounded-lg">
             <h2 className="text-xl font-semibold mb-2">{t('project.error')}</h2>
             <p>{error}</p>
           </div>
-        ) : isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin"></div>
-          </div>
         ) : !project ? (
           <div className="flex items-center justify-center py-10">
             <div className="text-center">
-              <p className="text-red-600">{t('project.dataNotAvailable')}</p>
+              <p className="text-gray-600">{t('project.loadingOrNotFound')}</p>
             </div>
           </div>
         ) : (

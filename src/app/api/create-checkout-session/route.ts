@@ -1,63 +1,91 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { headers } from 'next/headers';
+import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js'; // Use standard Supabase client for user check
 
-// Mark this route as dynamic to prevent static generation errors
-export const dynamic = 'force-dynamic';
+// Ensure Stripe key is available
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeSecretKey) {
+  throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
+}
+const stripe = new Stripe(stripeSecretKey, {
+  apiVersion: '2023-08-16', // Use the version expected by types
+});
 
-export async function POST() {
+// Use Supabase client to validate user session if needed, though primary validation happens on page
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Define credit packages here or import from a shared location
+// Duplicating for simplicity, consider moving to a shared lib later
+const CREDIT_PACKAGES = [
+  { id: 'basic', name: 'Basic', credits: 10, price: 9.99, popular: false },
+  { id: 'standard', name: 'Standard', credits: 25, price: 19.99, popular: true, bestValue: false },
+  { id: 'pro', name: 'Pro', credits: 50, price: 29.99, popular: false, bestValue: true },
+  { id: 'enterprise', name: 'Enterprise', credits: 100, price: 49.99, popular: false }
+];
+
+export async function POST(req: Request) {
+  const { packageId, userId } = await req.json();
+  // Try extracting origin from the request URL
+  const url = new URL(req.url);
+  const origin = url.origin || 'http://localhost:3000'; // Fallback for safety
+
+  if (!packageId || !userId) {
+    return NextResponse.json({ error: 'Missing packageId or userId' }, { status: 400 });
+  }
+
+  // Find the selected package
+  const selectedPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId);
+  if (!selectedPackage) {
+    return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
+  }
+
+  // Optional: Verify user exists using Supabase (client-side check is usually sufficient)
+  // const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId);
+  // if (userError || !user) {
+  //     return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+  // }
+
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
-    // Create or retrieve Stripe customer
-    const { data: user } = await supabase
-      .from('users')
-      .select('stripe_customer_id')
-      .eq('id', session.user.id)
-      .single();
-
-    let customerId = user?.stripe_customer_id;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: session.user.email,
-        metadata: {
-          userId: session.user.id
-        }
-      });
-      customerId = customer.id;
-
-      // Save Stripe customer ID
-      await supabase
-        .from('users')
-        .update({ stripe_customer_id: customerId })
-        .eq('id', session.user.id);
-    }
-
-    const checkoutSession = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'subscription',
+    // Create a Stripe Checkout session
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd', // Or your desired currency
+            product_data: {
+              name: `${selectedPackage.name} - ${selectedPackage.credits} Credits`,
+              description: `One-time purchase of ${selectedPackage.credits} credits.`,
+            },
+            // Price in cents
+            unit_amount: Math.round(selectedPackage.price * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment', // Use 'payment' for one-time purchases
+      success_url: `${origin}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}&status=success`, // Redirect back to billing page on success
+      cancel_url: `${origin}/dashboard/billing?status=cancelled`, // Redirect back on cancellation
       metadata: {
-        userId: session.user.id
+        userId: userId,
+        packageId: selectedPackage.id,
+        creditsAwarded: selectedPackage.credits.toString(), // Store as string
       },
-      line_items: [{
-        price: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
-        quantity: 1,
-      }],
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/billing?canceled=true`,
+      // Consider adding customer_email if available to prefill checkout
+      // customer_email: user?.email // Get email from validated user session if available
     });
 
-    return NextResponse.json({ url: checkoutSession.url });
+    if (!session.id) {
+        throw new Error('Failed to create Stripe session.');
+    }
+
+    return NextResponse.json({ sessionId: session.id });
+
   } catch (error: any) {
-    console.error('Error creating checkout session:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Error creating Stripe session:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

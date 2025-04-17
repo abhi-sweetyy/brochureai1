@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useSessionContext } from '@supabase/auth-helpers-react';
+import { createBrowserClient } from '@supabase/ssr';
+import type { Session } from '@supabase/supabase-js';
 
 interface BillingProps {
   initialSubscription: {
@@ -21,7 +22,14 @@ const formatDate = (date: string) => {
 };
 
 export default function BillingClient({ initialSubscription, userId }: BillingProps) {
-  const { supabaseClient } = useSessionContext();
+  const [supabaseClient] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
+
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+
   const [subscription, setSubscription] = useState({
     isPro: initialSubscription.isPro,
     isLoading: false,
@@ -29,6 +37,33 @@ export default function BillingClient({ initialSubscription, userId }: BillingPr
   });
 
   useEffect(() => {
+    const { data: authListener } = supabaseClient.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      setIsLoadingSession(false);
+    });
+
+    supabaseClient.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!session) {
+        setSession(initialSession);
+      }
+      if (isLoadingSession) {
+        setIsLoadingSession(false);
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabaseClient]);
+
+  useEffect(() => {
+    if (!session?.user?.id || !supabaseClient) return;
+
+    if (session.user.id !== userId) {
+      console.warn("User ID prop does not match current session user ID in BillingClient.");
+      return;
+    }
+
     const channel = supabaseClient
       .channel('subscription-changes')
       .on(
@@ -57,14 +92,20 @@ export default function BillingClient({ initialSubscription, userId }: BillingPr
       .subscribe();
 
     return () => {
-      channel.unsubscribe();
+      if (supabaseClient && channel) {
+        supabaseClient.removeChannel(channel);
+      }
     };
-  }, [supabaseClient, userId]);
+  }, [supabaseClient, userId, session]);
 
-  if (subscription.isLoading) {
+  if (isLoadingSession || subscription.isLoading) {
     return <div className="flex items-center justify-center p-6">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
     </div>;
+  }
+
+  if (!session) {
+    return <div className="text-center p-6 text-gray-500">Please log in to view billing information.</div>;
   }
 
   return (

@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useSessionContext } from "@supabase/auth-helpers-react";
+import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 import { useTranslation } from 'react-i18next';
 import i18n from "@/app/i18n";
 import { forceReloadTranslations } from "@/app/i18n";
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
 interface Project {
   id: string;
@@ -19,15 +19,18 @@ interface Project {
 }
 
 const BrochuresPage = () => {
-  const { session, isLoading } = useSessionContext();
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
-  const supabase = createClientComponentClient();
-  const [loading, setLoading] = useState(true);
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
+  const [loadingProjects, setLoadingProjects] = useState(true);
   const { t } = useTranslation();
   const [i18nInitialized, setI18nInitialized] = useState(false);
 
-  // Force reload translations when component mounts
   useEffect(() => {
     const loadTranslations = async () => {
       if (i18n.language) {
@@ -39,42 +42,59 @@ const BrochuresPage = () => {
     loadTranslations();
   }, []);
 
-  // Protect the brochures route
   useEffect(() => {
-    if (!session && !isLoading) {
-      router.replace('/sign-in');
-    }
-  }, [session, isLoading, router]);
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      setIsLoadingAuth(false);
+    });
 
-  // Fetch projects
-  const fetchProjects = async () => {
-    if (!session?.user?.id) return;
-    
-    setLoading(true);
-    
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!session) {
+         setSession(initialSession);
+      }
+      if (isLoadingAuth) {
+          setIsLoadingAuth(false);
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase, router]);
+
+  const fetchProjects = async (currentSession: Session | null) => {
+    if (!currentSession?.user?.id) {
+       setLoadingProjects(false);
+       return;
+    }
+
+    setLoadingProjects(true);
+
     const { data, error } = await supabase
       .from('real_estate_projects')
       .select('*')
-      .eq('user_id', session.user.id)  // Filter by current user's ID
+      .eq('user_id', currentSession.user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching projects:', error);
-      return;
-    }
-
-    if (data) {
+    } else if (data) {
       setProjects(data);
     }
-    
-    setLoading(false);
+
+    setLoadingProjects(false);
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, [supabase, session]);
+    if (session) {
+      fetchProjects(session);
+    } else if (session === null) {
+       setLoadingProjects(false);
+       setProjects([]);
+    }
+  }, [session, supabase]);
 
-  if (isLoading || loading) {
+  if (isLoadingAuth || loadingProjects) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-12 w-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin"></div>
@@ -84,7 +104,6 @@ const BrochuresPage = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Background elements */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[100px]"></div>
@@ -110,7 +129,6 @@ const BrochuresPage = () => {
           </div>
         </div>
         
-        {/* Projects List */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8">
           <div className="flex items-center mb-8">
             <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center mr-4">

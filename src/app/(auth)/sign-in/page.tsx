@@ -2,24 +2,43 @@
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
-import {
-  useSessionContext,
-  useSupabaseClient,
-} from "@supabase/auth-helpers-react";
+import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { Session } from '@supabase/supabase-js';
 
 const SignIn = () => {
-  const supabaseClient = useSupabaseClient();
-  const { session, isLoading } = useSessionContext();
+  const supabaseClient = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   const router = useRouter();
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (session?.user && !isLoading) {
-      router.replace("/dashboard");
-    }
-  }, [session, isLoading, router]);
+    const { data: authListener } = supabaseClient.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event, 'Session:', session);
+      setSession(session);
+      setIsLoading(false);
+      if (session?.user) {
+        router.replace("/dashboard");
+      }
+    });
+
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoading(false);
+      if (session?.user) {
+        router.replace("/dashboard");
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabaseClient, router]);
 
   if (isLoading) return null;
 

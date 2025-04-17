@@ -2,7 +2,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import SupabaseProvider from "@/providers/SupabaseProvider";
 import UserProvider from "@/providers/UserProvider";
 import { Providers } from "./providers";
 import ClientScripts from "@/components/ClientScripts";
@@ -35,14 +34,12 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
 					enableSystem={false}
 					disableTransitionOnChange
 				>
-					<SupabaseProvider>
-						<UserProvider>
-							<Providers>
-								<ClientScripts />
-								<div className="w-full overflow-x-hidden">{children}</div>
-							</Providers>
-						</UserProvider>
-					</SupabaseProvider>
+					<UserProvider>
+						<Providers>
+							<ClientScripts />
+							<div className="w-full overflow-x-hidden">{children}</div>
+						</Providers>
+					</UserProvider>
 				</ThemeProvider>
 			</body>
 		</html>

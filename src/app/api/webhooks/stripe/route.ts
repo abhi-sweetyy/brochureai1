@@ -2,8 +2,8 @@ import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+// import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
 const relevantEvents = new Set([
@@ -16,7 +16,8 @@ const relevantEvents = new Set([
 // Create a Supabase client with the service role key
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
 );
 
 // Mark this route as dynamic to prevent static generation errors
@@ -24,9 +25,10 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   const body = await request.text();
-  const sig = headers().get('Stripe-Signature');
+  const headersList = await headers()
+  const sig = headersList.get('Stripe-Signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const supabase = createRouteHandlerClient({ cookies });
+  // const supabase = createRouteHandlerClient({ cookies });
 
   try {
     if (!sig || !webhookSecret) {
@@ -78,6 +80,62 @@ export async function POST(request: Request) {
             }
 
             console.log('Subscription stored successfully for user:', userId);
+            break;
+          }
+          case 'checkout.session.completed': {
+            const session = event.data.object as Stripe.Checkout.Session;
+
+            // Extract metadata
+            const userId = session.metadata?.userId;
+            const creditsAwardedString = session.metadata?.creditsAwarded;
+
+            if (!userId || !creditsAwardedString) {
+              console.error('Webhook received checkout.session.completed without userId or creditsAwarded in metadata', session.id);
+              return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
+            }
+
+            const creditsAwarded = parseInt(creditsAwardedString, 10);
+            if (isNaN(creditsAwarded)) {
+              console.error('Webhook received invalid creditsAwarded value in metadata', session.id, creditsAwardedString);
+              return NextResponse.json({ error: 'Invalid creditsAwarded metadata' }, { status: 400 });
+            }
+
+            console.log(`Processing successful payment for user: ${userId}, awarding ${creditsAwarded} credits.`);
+
+            try {
+              // Fetch current credits using the Admin client
+              const { data: profile, error: fetchError } = await supabaseAdmin
+                .from('profiles')
+                .select('credits')
+                .eq('id', userId)
+                .single();
+
+              if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = Row not found
+                console.error(`Webhook: Error fetching profile for user ${userId}:`, fetchError);
+                throw fetchError; // Throw to return 500
+              }
+
+              const currentCredits = profile?.credits || 0;
+              const newCreditAmount = currentCredits + creditsAwarded;
+
+              // Update user credits using the Admin client
+              const { error: updateError } = await supabaseAdmin
+                .from('profiles')
+                .upsert({ id: userId, credits: newCreditAmount })
+                .eq('id', userId); // Ensure we only update the target user
+
+              if (updateError) {
+                console.error(`Webhook: Error updating credits for user ${userId}:`, updateError);
+                throw updateError; // Throw to return 500
+              }
+
+              console.log(`Successfully updated credits for user ${userId} to ${newCreditAmount}`);
+
+            } catch (dbError: any) {
+              console.error('Webhook: Database operation failed:', dbError);
+              // Return 500 to signal Stripe to retry the webhook
+              return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
+            }
             break;
           }
         }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@supabase/ssr";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import i18n, { forceReloadTranslations } from "@/app/i18n";
@@ -17,7 +17,10 @@ interface DashboardNavProps {
 
 const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollapse }: DashboardNavProps) => {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ));
   const { t } = useTranslation();
   const [i18nInitialized, setI18nInitialized] = useState(false);
 
@@ -36,6 +39,7 @@ const DashboardNav = ({ activeTab, isOpen, setIsOpen, isCollapsed, toggleCollaps
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push("/");
+    router.refresh();
   };
 
   return (

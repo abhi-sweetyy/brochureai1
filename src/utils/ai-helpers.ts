@@ -107,7 +107,7 @@ Make sure all JSON strings are properly escaped with no unterminated quotes.`
       return { placeholders: {} };
     }
     
-    let parsedContent;
+    let parsedContent: any;
     try {
       const content = data.choices[0].message.content;
       console.log("Raw AI response:", content.substring(0, 200) + "...");
