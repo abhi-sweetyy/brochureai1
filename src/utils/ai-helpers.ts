@@ -120,16 +120,32 @@ Make sure all JSON strings are properly escaped with no unterminated quotes.`
       
       // Attempt to fix and sanitize the JSON before parsing
       let sanitizedContent = content.trim();
+      
+      // Attempt to extract JSON block if the content looks like it might contain one
+      const jsonStart = sanitizedContent.indexOf('{');
+      const jsonEnd = sanitizedContent.lastIndexOf('}');
+      
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        const potentialJson = sanitizedContent.substring(jsonStart, jsonEnd + 1);
+        // Basic check if it looks like JSON before replacing sanitizedContent
+        if (potentialJson.length > 1) { 
+            sanitizedContent = potentialJson;
+            console.log("Extracted potential JSON block for parsing.");
+        }
+      } else {
+         console.warn("Could not find valid JSON block delimiters {} in the response. Attempting parse on trimmed content.");
+      }
+      
       try {
         parsedContent = JSON.parse(sanitizedContent);
         console.log("Successfully parsed AI response");
       } catch (initialParseError) {
-        console.warn("Initial JSON parse failed, attempting to sanitize response:", initialParseError);
+        console.warn("Initial JSON parse failed after attempting extraction, falling back to regex:", initialParseError);
         
-        // Fallback approach: extract valid JSON data manually
+        // Fallback approach: extract valid JSON data manually using regex
         const placeholders: Partial<PropertyPlaceholders> = {};
         
-        // Regex to extract field values - more robust than full JSON parsing
+        // Regex to extract field values
         const fields = [
           "phone_number", "email_address", "website_name", "title", 
           "address", "shortdescription", "price", "date_available", 
@@ -138,18 +154,25 @@ Make sure all JSON strings are properly escaped with no unterminated quotes.`
         ];
         
         fields.forEach(field => {
-          const regex = new RegExp(`"${field}"\\s*:\\s*"([^"]*)"`, 'i');
+          // Use a more robust regex to handle potential variations in spacing and quotes
+          const regex = new RegExp(`"${field}"\s*:\s*"?([^"\n,}]*)"?`, 'i');
           const match = sanitizedContent.match(regex);
           if (match && match[1]) {
-            placeholders[field as keyof PropertyPlaceholders] = match[1];
+            // Trim the result and remove potential trailing commas or quotes
+            placeholders[field as keyof PropertyPlaceholders] = match[1].trim().replace(/[",]*$/, ''); 
           }
         });
         
-        console.log("Extracted fields using regex fallback");
-        return { placeholders };
+        if (Object.keys(placeholders).length > 0) {
+          console.log("Extracted fields using regex fallback:", Object.keys(placeholders).join(', '));
+          return { placeholders }; // Return directly after successful regex fallback
+        } else {
+          console.error("Regex fallback also failed to extract any fields.");
+          return { placeholders: {} }; // Return empty if regex also fails
+        }
       }
-    } catch (parseError) {
-      console.error("Error in JSON handling:", parseError);
+    } catch (error) { // Renamed outer catch variable to avoid conflict
+      console.error("Error during AI response processing:", error);
       return { placeholders: {} };
     }
     
