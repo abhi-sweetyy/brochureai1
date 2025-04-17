@@ -5,6 +5,7 @@ const nextConfig = {
     return config;
   },
   serverExternalPackages: ['googleapis'],
+  devIndicators: false
 }
 
 module.exports = nextConfig
