@@ -6,6 +6,13 @@ import { stripe } from '@/lib/stripe';
 // import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
+// Add this config export to disable the default body parser
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 const relevantEvents = new Set([
   'checkout.session.completed',
   'customer.subscription.created',

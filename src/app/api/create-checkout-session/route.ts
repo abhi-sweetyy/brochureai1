@@ -28,9 +28,9 @@ const CREDIT_PACKAGES = [
 
 export async function POST(req: Request) {
   const { packageId, userId } = await req.json();
-  // Try extracting origin from the request URL
-  const url = new URL(req.url);
-  const origin = url.origin || 'http://localhost:3000'; // Fallback for safety
+  
+  // Determine the base URL for redirects
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'; 
 
   if (!packageId || !userId) {
     return NextResponse.json({ error: 'Missing packageId or userId' }, { status: 400 });
@@ -67,8 +67,8 @@ export async function POST(req: Request) {
         },
       ],
       mode: 'payment', // Use 'payment' for one-time purchases
-      success_url: `${origin}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}&status=success`, // Redirect back to billing page on success
-      cancel_url: `${origin}/dashboard/billing?status=cancelled`, // Redirect back on cancellation
+      success_url: `${siteUrl}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}&status=success`, // Use siteUrl
+      cancel_url: `${siteUrl}/dashboard/billing?status=cancelled`, // Use siteUrl
       metadata: {
         userId: userId,
         packageId: selectedPackage.id,
