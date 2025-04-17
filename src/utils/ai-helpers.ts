@@ -139,39 +139,11 @@ Make sure all JSON strings are properly escaped with no unterminated quotes.`
       try {
         parsedContent = JSON.parse(sanitizedContent);
         console.log("Successfully parsed AI response");
-      } catch (initialParseError) {
-        console.warn("Initial JSON parse failed after attempting extraction, falling back to regex:", initialParseError);
-        
-        // Fallback approach: extract valid JSON data manually using regex
-        const placeholders: Partial<PropertyPlaceholders> = {};
-        
-        // Regex to extract field values
-        const fields = [
-          "phone_number", "email_address", "website_name", "title", 
-          "address", "shortdescription", "price", "date_available", 
-          "name_brokerfirm", "descriptionlarge", "descriptionextralarge", 
-          "address_brokerfirm"
-        ];
-        
-        fields.forEach(field => {
-          // Use a more robust regex to handle potential variations in spacing and quotes
-          const regex = new RegExp(`"${field}"\s*:\s*"?([^"\n,}]*)"?`, 'i');
-          const match = sanitizedContent.match(regex);
-          if (match && match[1]) {
-            // Trim the result and remove potential trailing commas or quotes
-            placeholders[field as keyof PropertyPlaceholders] = match[1].trim().replace(/[",]*$/, ''); 
-          }
-        });
-        
-        if (Object.keys(placeholders).length > 0) {
-          console.log("Extracted fields using regex fallback:", Object.keys(placeholders).join(', '));
-          return { placeholders }; // Return directly after successful regex fallback
-        } else {
-          console.error("Regex fallback also failed to extract any fields.");
-          return { placeholders: {} }; // Return empty if regex also fails
-        }
+      } catch (parseError) { // Catch JSON parsing errors directly here
+        console.error("Failed to parse AI response JSON:", parseError, "Raw content:", sanitizedContent);
+        return { placeholders: {} }; // Return empty placeholders on parse failure
       }
-    } catch (error) { // Renamed outer catch variable to avoid conflict
+    } catch (error) {
       console.error("Error during AI response processing:", error);
       return { placeholders: {} };
     }
@@ -191,7 +163,7 @@ Make sure all JSON strings are properly escaped with no unterminated quotes.`
     
     return { placeholders };
   } catch (error) {
-    console.error('Error in processPropertyDescription:', error);
+    console.error('Error in processPropertyDescription (could be API call or other issues):', error);
     
     // Return an empty object - no fallbacks to static data
     return { placeholders: {} };
